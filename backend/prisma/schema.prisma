@@ -3,26 +3,28 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql" // kullandığın DB'ye göre değiştir
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
+// === KULLANICI TABLOSU ===
 model User {
-  id            Int            @id @default(autoincrement())
-  email         String         @unique
-  password      String
-  role          String
-
-  firstName     String?
-  lastName      String?
-  phone         String?
-  department    String?
-
-  records       Record[]
-  generalFaults GeneralFault[]
-  createdAt     DateTime       @default(now())
+  id              Int              @id @default(autoincrement())
+  email           String           @unique
+  password        String
+  role            String
+  firstName       String?
+  lastName        String?
+  phone           String?
+  department      String?
+  records         Record[]
+  generalFaults   GeneralFault[]
+  productionStops ProductionStop[]
+  actionLogs      ActionLog[]
+  createdAt       DateTime         @default(now())
 }
 
+// === MOTOR TABLOSU ===
 model Motor {
   id          Int      @id @default(autoincrement())
   serial      String   @unique
@@ -34,6 +36,7 @@ model Motor {
   createdAt   DateTime @default(now())
 }
 
+// === ARIZA TİPİ ===
 model FaultType {
   id        Int      @id @default(autoincrement())
   name      String   @unique
@@ -41,31 +44,90 @@ model FaultType {
   createdAt DateTime @default(now())
 }
 
+// === MOTOR/EKİPMAN ARIZA KAYDI (TARİHÇE) ===
 model Record {
-  id          Int      @id @default(autoincrement())
-  user        User     @relation(fields: [userId], references: [id], onDelete: Restrict)
-  userId      Int
-  motor       Motor    @relation(fields: [motorId], references: [id], onDelete: Restrict)
-  motorId     Int
-  faultType   FaultType @relation(fields: [faultTypeId], references: [id], onDelete: Restrict)
-  faultTypeId Int
-  desc        String
-  duration    String?
-  date        DateTime @default(now())
-  createdAt   DateTime @default(now())
+  id               Int       @id @default(autoincrement())
+  user             User      @relation(fields: [userId], references: [id])
+  userId           Int
+  motor            Motor     @relation(fields: [motorId], references: [id])
+  motorId          Int
+  faultType        FaultType @relation(fields: [faultTypeId], references: [id])
+  faultTypeId      Int
+  desc             String
+  duration         Int? // Arıza süresi (dakika)
+  date             DateTime  @default(now())
+  productionImpact Boolean?
+  line             String?
+  downtimeMinutes  Int?
+  status           String?
+  closedAt         DateTime?
+  createdAt        DateTime  @default(now())
 }
 
+// === TÜM GENEL ARIZALAR ===
 model GeneralFault {
-  id          Int      @id @default(autoincrement())
-  description String
-  location    String
-  duration    String?
-  date        DateTime @default(now())
-  user        User     @relation(fields: [userId], references: [id])
-  userId      Int
-  createdAt   DateTime @default(now())
+  id               Int             @id @default(autoincrement())
+  description      String
+  location         String
+  duration         Int?
+  date             DateTime        @default(now())
+  user             User            @relation(fields: [userId], references: [id])
+  userId           Int
+  equipmentType    String?
+  equipmentId      Int?
+  importance       String?
+  status           String?
+  line             String?
+  productionImpact Boolean?
+  downtimeMinutes  Int?
+  closedAt         DateTime?
+  files            File[]
+  actions          ActionLog[]
+  // Bir GeneralFault, bir ProductionStop'a bağlanabilir (one-to-one)
+  productionStop   ProductionStop? @relation("GeneralFaultToProductionStop")
+  productionStopId Int?            @unique
+  createdAt        DateTime        @default(now())
 }
 
+// === ÜRETİM DURUŞ KAYDI (STOP LOGU) ===
+model ProductionStop {
+  id          Int           @id @default(autoincrement())
+  line        String
+  startTime   DateTime
+  endTime     DateTime
+  duration    Int
+  reason      String
+  createdBy   User?         @relation(fields: [createdById], references: [id])
+  createdById Int?
+  createdAt   DateTime      @default(now())
+  // Sadece aşağıdaki gibi tanımla (GeneralFault ile one-to-one)
+  fault       GeneralFault? @relation("GeneralFaultToProductionStop", fields: [faultId], references: [id])
+  faultId     Int?          @unique
+}
+
+// === DOSYA/FOTOĞRAF ===
+model File {
+  id             Int           @id @default(autoincrement())
+  url            String
+  fileName       String
+  generalFault   GeneralFault? @relation(fields: [generalFaultId], references: [id])
+  generalFaultId Int?
+  uploadedAt     DateTime      @default(now())
+}
+
+// === AKSİYON/HAREKET GEÇMİŞİ ===
+model ActionLog {
+  id             Int           @id @default(autoincrement())
+  generalFault   GeneralFault? @relation(fields: [generalFaultId], references: [id])
+  generalFaultId Int?
+  user           User?         @relation(fields: [userId], references: [id])
+  userId         Int?
+  actionType     String
+  description    String?
+  createdAt      DateTime      @default(now())
+}
+
+// === DUYURU ===
 model Announcement {
   id          Int      @id @default(autoincrement())
   title       String
