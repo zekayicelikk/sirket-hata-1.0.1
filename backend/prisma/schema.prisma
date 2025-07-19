@@ -1,0 +1,75 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql" // kullandığın DB'ye göre değiştir
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            Int            @id @default(autoincrement())
+  email         String         @unique
+  password      String
+  role          String
+
+  firstName     String?
+  lastName      String?
+  phone         String?
+  department    String?
+
+  records       Record[]
+  generalFaults GeneralFault[]
+  createdAt     DateTime       @default(now())
+}
+
+model Motor {
+  id          Int      @id @default(autoincrement())
+  serial      String   @unique
+  name        String
+  description String?
+  status      String?
+  location    String?
+  records     Record[]
+  createdAt   DateTime @default(now())
+}
+
+model FaultType {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  records   Record[]
+  createdAt DateTime @default(now())
+}
+
+model Record {
+  id          Int      @id @default(autoincrement())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  userId      Int
+  motor       Motor    @relation(fields: [motorId], references: [id], onDelete: Restrict)
+  motorId     Int
+  faultType   FaultType @relation(fields: [faultTypeId], references: [id], onDelete: Restrict)
+  faultTypeId Int
+  desc        String
+  duration    String?
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+}
+
+model GeneralFault {
+  id          Int      @id @default(autoincrement())
+  description String
+  location    String
+  duration    String?
+  date        DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id])
+  userId      Int
+  createdAt   DateTime @default(now())
+}
+
+model Announcement {
+  id          Int      @id @default(autoincrement())
+  title       String
+  desc        String
+  date        DateTime @default(now())
+  createdById Int?
+}

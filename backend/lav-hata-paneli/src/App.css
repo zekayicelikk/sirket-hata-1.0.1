@@ -1,0 +1,71 @@
+/* Tam ekran ve profesyonel, responsive arka plan */
+
+html, body, #root {
+  height: 100%;
+  min-height: 100vh;
+  width: 100vw;
+  margin: 0;
+  padding: 0;
+  background: #f7f8fa !important; /* Kurumsal açık arka plan */
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+  box-sizing: border-box;
+}
+
+/* Ant Design Layout fixleri */
+.ant-layout, .ant-layout-content {
+  min-height: 100vh;
+  background: transparent !important;
+}
+
+/* Sidebar ve Header gölge efektleri */
+.ant-layout-sider {
+  box-shadow: 2px 0 24px #ac47a425;
+}
+
+/* Responsive scroll */
+::-webkit-scrollbar {
+  width: 8px;
+  background: #ece0ef;
+}
+::-webkit-scrollbar-thumb {
+  background: #ac47a4;
+  border-radius: 7px;
+}
+
+/* Cardlar için yumuşak gölge */
+.ant-card {
+  border-radius: 22px !important;
+  box-shadow: 0 2px 16px #b486be1c !important;
+}
+
+/* Animasyon ve hover efektleri */
+a, button, .ant-menu-item, .ant-btn, .ant-card {
+  transition: all 0.18s cubic-bezier(.43,.41,.21,1.11);
+}
+a:hover, .ant-btn:hover, .ant-card:hover {
+  filter: brightness(0.98) drop-shadow(0 2px 6px #e9b7e411);
+}
+
+/* Responsive mobil düzen */
+@media (max-width: 950px) {
+  .ant-layout-content {
+    padding: 0 !important;
+  }
+}
+
+/* Tüm içeriği sola hizalar */
+.main-content, .dashboard-content {
+  width: 100%;
+  min-height: calc(100vh - 70px);
+  padding: 36px 24px 28px 24px;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+/* Header fix */
+.ant-layout-header {
+  z-index: 3 !important;
+  position: relative;
+}
