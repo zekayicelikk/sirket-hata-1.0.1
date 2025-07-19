@@ -1,112 +1,123 @@
-import { Router } from "express";
+import express from "express";
 import { PrismaClient } from "@prisma/client";
 
-const router = Router();
+const router = express.Router();
 const prisma = new PrismaClient();
 
-// ARIZA EKLE (POST /api/generalFault)
+// === TÜM ARIZALARI GETİR (filtrelenebilir) ===
+router.get("/", async (req, res) => {
+  try {
+    const { line, productionImpact, start, end } = req.query;
+    const where: any = {};
+
+    // Üretim etkisiyle filtre
+    if (productionImpact !== undefined) {
+      where.productionImpact = productionImpact === "true";
+    }
+    // Tarih aralığı filtrelemesi
+    if (start && end) {
+      where.date = {
+        gte: new Date(start as string),
+        lte: new Date(end as string),
+      };
+    }
+    // Hata bir hattı içeriyor mu (id ile)
+    if (line) {
+      where.lines = {
+        some: { lineId: Number(line) }
+      };
+    }
+
+    const faults = await prisma.generalFault.findMany({
+      where,
+      include: {
+        user: true,
+        lines: { include: { line: true } },
+        files: true
+      },
+      orderBy: { date: "desc" },
+    });
+    res.json(faults);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Arızalar alınamadı" });
+  }
+});
+
+// === YENİ ARIZA EKLE ===
 router.post("/", async (req, res) => {
   try {
     const {
-      description, location, duration, userId, equipmentType, equipmentId,
-      importance, status, line, productionImpact, downtimeMinutes,
-      closedAt, productionStopId
+      description,
+      location,
+      productionImpact,
+      userId,
+      lines, // [{ lineId: 1, downtimeMin: 10 }, ...] gibi çoklu
+      files, // [{ url, fileName }]
+      date
     } = req.body;
 
-    const fault = await prisma.generalFault.create({
+    // 1. Ana arıza kaydını ekle
+    const generalFault = await prisma.generalFault.create({
       data: {
         description,
         location,
-        duration,
-        date: new Date(),
-        userId,
-        equipmentType,
-        equipmentId,
-        importance,
-        status,
-        line,
         productionImpact,
-        downtimeMinutes,
-        closedAt: closedAt ? new Date(closedAt) : undefined,
-        productionStopId
+        date: date ? new Date(date) : undefined,
+        user: { connect: { id: userId } },
+        lines: {
+          create: lines?.map((l: any) => ({
+            line: { connect: { id: l.lineId } },
+            downtimeMin: l.downtimeMin,
+          })) || [],
+        },
+        files: {
+          create: files?.map((f: any) => ({
+            url: f.url,
+            fileName: f.fileName,
+          })) || [],
+        }
       },
-    });
-    res.status(201).json(fault);
-  } catch (e: any) {
-    res.status(500).json({ error: "Arıza kaydedilemedi", detail: e.message });
-  }
-});
-
-// ARIZA GÜNCELLE (PUT /api/generalFault/:id)
-router.put("/:id", async (req, res) => {
-  try {
-    const id = Number(req.params.id);
-    const data = req.body;
-    if (data.closedAt) data.closedAt = new Date(data.closedAt);
-    const updated = await prisma.generalFault.update({
-      where: { id },
-      data
-    });
-    res.json(updated);
-  } catch (e: any) {
-    res.status(500).json({ error: "Güncellenemedi", detail: e.message });
-  }
-});
-
-// TÜM ARIZALARI LİSTELE (GET /api/generalFault)
-router.get("/", async (req, res) => {
-  try {
-    const filter: any = {};
-    if (req.query.status) filter.status = req.query.status;
-    if (req.query.line) filter.line = req.query.line;
-    if (req.query.importance) filter.importance = req.query.importance;
-    if (req.query.equipmentType) filter.equipmentType = req.query.equipmentType;
-    // Tarih aralığı gibi daha fazla filtre ekleyebilirsin
-
-    const data = await prisma.generalFault.findMany({
-      where: filter,
       include: {
-        user: true,
-        productionStop: true,
+        lines: { include: { line: true } },
         files: true,
-        actions: true
-      },
-      orderBy: { createdAt: "desc" }
-    });
-    res.json(data);
-  } catch (e: any) {
-    res.status(500).json({ error: "Arızalar alınamadı", detail: e.message });
-  }
-});
-
-// ARIZA DETAY (GET /api/generalFault/:id)
-router.get("/:id", async (req, res) => {
-  try {
-    const id = Number(req.params.id);
-    const fault = await prisma.generalFault.findUnique({
-      where: { id },
-      include: {
-        user: true,
-        productionStop: true,
-        files: true,
-        actions: true
+        user: true
       }
     });
-    if (!fault) return res.status(404).json({ error: "Bulunamadı" });
-    res.json(fault);
-  } catch (e: any) {
-    res.status(500).json({ error: "Detay alınamadı", detail: e.message });
+    res.status(201).json(generalFault);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Arıza kaydı eklenemedi" });
   }
 });
 
-// ARIZA SİL (DELETE /api/generalFault/:id)
+// === TEKİL ARIZA DETAYI ===
+router.get("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const fault = await prisma.generalFault.findUnique({
+      where: { id: Number(id) },
+      include: {
+        user: true,
+        lines: { include: { line: true } },
+        files: true
+      }
+    });
+    if (!fault) return res.status(404).json({ error: "Arıza bulunamadı" });
+    res.json(fault);
+  } catch (err) {
+    res.status(500).json({ error: "Detay alınamadı" });
+  }
+});
+
+// === ARIZA SİL ===
 router.delete("/:id", async (req, res) => {
   try {
-    const id = Number(req.params.id);
-    await prisma.generalFault.delete({ where: { id } });
+    const { id } = req.params;
+    await prisma.generalFault.delete({ where: { id: Number(id) } });
     res.json({ success: true });
-  } catch (e: any) {
-    res.status(500).json({ error: "Silinemedi", detail: e.message });
+  } catch (err) {
+    res.status(500).json({ error: "Silinemedi" });
   }
 });
 

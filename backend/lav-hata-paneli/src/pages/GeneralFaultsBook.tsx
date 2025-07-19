@@ -1,192 +1,459 @@
 import React, { useEffect, useState } from "react";
 import {
-  Table, Button, Modal, Form, Input, Select, Checkbox, InputNumber, Upload, Tag, Space, Tooltip, Empty, Spin
+  Table, Modal, Form, Input, Button, DatePicker, Select, message,
+  Space, Tag, Statistic, Card, Row, Col, Tooltip, Popconfirm
 } from "antd";
-import { PlusOutlined, UploadOutlined, FileImageOutlined, SearchOutlined } from "@ant-design/icons";
+import {
+  PlusOutlined, ReloadOutlined, FileExcelOutlined,
+  InfoCircleOutlined, DeleteOutlined
+} from "@ant-design/icons";
+import * as XLSX from "xlsx";
 import api from "../api";
 import moment from "moment";
 
-const statusOptions = ["Açık", "Kapalı", "İnceleniyor"];
-const importanceOptions = ["Kritik", "Yüksek", "Orta", "Düşük"];
+interface Line {
+  id: number;
+  code: string;
+  name: string;
+}
+interface User {
+  id: number;
+  email: string;
+  role: string;
+}
+interface GeneralFault {
+  id: number;
+  description: string;
+  date: string;
+  location: string;
+  productionImpact: boolean;
+  lines: { line: Line; downtimeMin: number }[];
+  user: User;
+  createdAt: string;
+}
 
-const GeneralFaultsBook: React.FC = () => {
-  const [data, setData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+const FaultBookEnterprise: React.FC = () => {
+  const [faults, setFaults] = useState<GeneralFault[]>([]);
+  const [lines, setLines] = useState<Line[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
-  const [fileList, setFileList] = useState<any[]>([]);
-  const [selected, setSelected] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
-  const [filters, setFilters] = useState<{status?: string, importance?: string, impact?: boolean}>({});
+  const [detail, setDetail] = useState<GeneralFault | null>(null);
+  const [search, setSearch] = useState("");
+  const [filterLine, setFilterLine] = useState<number[]>([]);
+  const [filterImpact, setFilterImpact] = useState<null | boolean>(null);
+  const [stats, setStats] = useState({
+    total: 0,
+    affected: 0,
+    notAffected: 0,
+  });
 
-  const fetchData = async () => {
-    setLoading(true);
+  // Admin kontrolü
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("userInfo") || "{}");
+    setIsAdmin(user?.role === "admin");
+  }, []);
+
+  // Hatları çek
+  const fetchLines = async () => {
     try {
-      const res = await api.get("/general-faults");
-      setData(res.data);
-    } finally { setLoading(false); }
-  };
-
-  useEffect(() => { fetchData(); }, []);
-
-  // TABLO FİLTRESİ
-  const filteredData = data.filter(f =>
-    (!filters.status || f.status === filters.status) &&
-    (!filters.importance || f.importance === filters.importance) &&
-    (filters.impact === undefined || !!f.productionImpact === filters.impact)
-  );
-
-  // ARIZA EKLE
-  const onOk = async () => {
-    try {
-      const values = await form.validateFields();
-      values.productionImpact = !!values.productionImpact;
-      const res = await api.post("/general-faults", values);
-      // Dosya yükleme (varsa)
-      for (const file of fileList) {
-        const formData = new FormData();
-        formData.append("file", file.originFileObj);
-        await api.post(`/general-faults/${res.data.id}/files`, formData, {
-          headers: { "Content-Type": "multipart/form-data" }
-        });
-      }
-      setModalOpen(false);
-      form.resetFields();
-      setFileList([]);
-      fetchData();
-    } catch (err) {
-      // Hata mesajı
+      const res = await api.get<Line[]>("/production-lines");
+      setLines(res.data);
+    } catch {
+      message.error("Hatlar alınamadı.");
     }
   };
 
-  // DETAY MODALI
-  const [detail, setDetail] = useState<any>(null);
+  // Arızaları çek
+  const fetchFaults = async () => {
+    setLoading(true);
+    try {
+      const params: any = {};
+      if (filterLine.length > 0) params.line = filterLine[0];
+      if (filterImpact !== null) params.productionImpact = filterImpact;
+      const res = await api.get<GeneralFault[]>("/general-faults", { params });
+      let data = res.data;
+      if (search)
+        data = data.filter((f) =>
+          f.description?.toLowerCase().includes(search.toLowerCase())
+        );
+      setFaults(data);
+      calcStats(data);
+    } catch {
+      message.error("Arızalar alınamadı.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // İstatistik hesapla
+  const calcStats = (data: GeneralFault[]) => {
+    const total = data.length;
+    const affected = data.filter((f) => f.productionImpact).length;
+    const notAffected = data.filter((f) => !f.productionImpact).length;
+    setStats({ total, affected, notAffected });
+  };
+
+  // Excel export
+  const exportExcel = () => {
+    const ws = XLSX.utils.json_to_sheet(
+      faults.map((f) => ({
+        Açıklama: f.description,
+        Lokasyon: f.location,
+        "Üretimi Etkiledi": f.productionImpact ? "Evet" : "Hayır",
+        "Hat(lar)": f.lines.map((l) => `${l.line.code} (${l.downtimeMin}dk)`).join(", "),
+        "Kullanıcı": f.user?.email,
+        Tarih: moment(f.date).format("DD.MM.YYYY HH:mm"),
+      }))
+    );
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Arizalar");
+    XLSX.writeFile(wb, "ariza-defteri.xlsx");
+  };
+
+  // Ekle Modalı/Lines/Süre için
+  const [impact, setImpact] = useState(true);
+  const [selectedLines, setSelectedLines] = useState<number[]>([]);
+  useEffect(() => {
+    if (!modalOpen) {
+      setImpact(true);
+      setSelectedLines([]);
+      form.resetFields();
+    }
+  }, [modalOpen]);
+
+  useEffect(() => { fetchLines(); }, []);
+  useEffect(() => { fetchFaults(); }, [search, filterLine, filterImpact]);
+
+  // Yeni arıza ekle
+  const handleAdd = async () => {
+    try {
+      const user = JSON.parse(localStorage.getItem("userInfo") || "{}");
+      const userId = user?.id || 1;
+      const values = await form.validateFields();
+      await api.post("/general-faults", {
+        description: values.description,
+        location: values.location,
+        date: values.date ? values.date.toISOString() : undefined,
+        userId,
+        productionImpact: values.productionImpact,
+        lines:
+          values.productionImpact && Array.isArray(values.lines)
+            ? values.lines.map((lineId: number) => ({
+                lineId,
+                downtimeMin: Number(values[`downtimeMin_${lineId}`]) || 0,
+              }))
+            : [],
+      });
+      message.success("Arıza eklendi!");
+      setModalOpen(false);
+      form.resetFields();
+      fetchFaults();
+    } catch (e: any) {
+      message.error("Ekleme başarısız: " + (e?.response?.data?.error || ""));
+    }
+  };
+
+  // Silme (sadece admin için)
+  const handleDelete = async (id: number) => {
+    try {
+      await api.delete(`/general-faults/${id}`);
+      message.success("Arıza silindi.");
+      fetchFaults();
+    } catch {
+      message.error("Silme başarısız.");
+    }
+  };
+
+  // Tablo sütunları
+  const columns = [
+    {
+      title: "Açıklama",
+      dataIndex: "description",
+      render: (desc: string, record: GeneralFault) => (
+        <a style={{ fontWeight: 500, fontSize: 15 }} onClick={() => setDetail(record)}>{desc}</a>
+      ),
+      ellipsis: true,
+      width: 240,
+    },
+    { 
+      title: "Lokasyon",
+      dataIndex: "location",
+      width: 110,
+      render: (loc: string) => <span style={{ color: "#6d6d6d" }}>{loc}</span>
+    },
+    {
+      title: "Üretim Etkisi",
+      dataIndex: "productionImpact",
+      render: (v: boolean) =>
+        v ? <Tag color="error">Etkiledi</Tag> : <Tag color="success">Etkilemedi</Tag>,
+      width: 120,
+    },
+    {
+      title: "Hat(lar)",
+      dataIndex: "lines",
+      render: (lines: any[]) =>
+        lines?.length ? (
+          <Space>
+            {lines.map((l) => (
+              <Tag key={l.line.id} color="geekblue">
+                {l.line.code} <span style={{ fontWeight: 500 }}>{l.downtimeMin}dk</span>
+              </Tag>
+            ))}
+          </Space>
+        ) : (
+          <Tag color="default">-</Tag>
+        ),
+      width: 200,
+    },
+    {
+      title: "Kullanıcı",
+      dataIndex: ["user", "email"],
+      render: (v: string) => (
+        <span style={{ color: "#343f58" }}>{v || "-"}</span>
+      ),
+      width: 170,
+    },
+    {
+      title: "Tarih",
+      dataIndex: "date",
+      render: (d: string) => (
+        <span style={{
+          fontWeight: 600, color: "#24292f", background: "#fafafa",
+          padding: "3px 12px", borderRadius: 8, fontSize: 15
+        }}>
+          {moment(d).format("DD.MM.YYYY HH:mm")}
+        </span>
+      ),
+      width: 150,
+      fixed: "right" as any
+    },
+    {
+      title: "",
+      width: 90,
+      render: (_: any, record: GeneralFault) => (
+        <Space>
+          <Tooltip title="Detay">
+            <Button
+              size="small"
+              icon={<InfoCircleOutlined />}
+              onClick={() => setDetail(record)}
+              style={{ borderColor: "#a6c1ee", color: "#1e40af" }}
+            />
+          </Tooltip>
+          {isAdmin && (
+            <Popconfirm
+              title="Bu arızayı silmek istediğinize emin misiniz?"
+              onConfirm={() => handleDelete(record.id)}
+              okText="Evet"
+              cancelText="İptal"
+            >
+              <Button
+                size="small"
+                danger
+                icon={<DeleteOutlined />}
+                style={{ background: "#f2e4e4", color: "#b71c1c", borderColor: "#cfd8dc" }}
+              />
+            </Popconfirm>
+          )}
+        </Space>
+      ),
+    },
+  ];
 
   return (
-    <div style={{maxWidth: 1100, margin: "0 auto", padding: 24}}>
-      <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16}}>
-        <h1>Genel Arıza Defteri</h1>
-        <Button icon={<PlusOutlined />} type="primary" onClick={()=>{setModalOpen(true)}}>Yeni Arıza Ekle</Button>
-      </div>
+    <div style={{ maxWidth: 900, margin: "40px auto" }}>
+      {/* Sadece 3 istatistik kutusu */}
+      <Row gutter={16} style={{ marginBottom: 18 }}>
+        <Col flex={1}>
+          <Card variant="borderless">
+            <Statistic title="Toplam Arıza" value={stats.total} />
+          </Card>
+        </Col>
+        <Col flex={1}>
+          <Card variant="borderless">
+            <Statistic title="Üretimi Etkileyen" value={stats.affected} valueStyle={{ color: "#cf1322" }} />
+          </Card>
+        </Col>
+        <Col flex={1}>
+          <Card variant="borderless">
+            <Statistic title="Üretimi Etkilemeyen" value={stats.notAffected} valueStyle={{ color: "#3f8600" }} />
+          </Card>
+        </Col>
+      </Row>
 
       {/* Filtreler */}
-      <Space style={{marginBottom: 16}}>
-        <Select allowClear placeholder="Durum" onChange={v=>setFilters(f=>({...f, status:v}))} style={{width:120}}>
-          {statusOptions.map(o => <Select.Option key={o} value={o}>{o}</Select.Option>)}
-        </Select>
-        <Select allowClear placeholder="Önem" onChange={v=>setFilters(f=>({...f, importance:v}))} style={{width:120}}>
-          {importanceOptions.map(o => <Select.Option key={o} value={o}>{o}</Select.Option>)}
-        </Select>
-        <Select allowClear placeholder="Üretimi Etkiledi?" onChange={v=>setFilters(f=>({...f, impact:v==="true"?true:v==="false"?false:undefined}))} style={{width:140}}>
-          <Select.Option value="true">Evet</Select.Option>
-          <Select.Option value="false">Hayır</Select.Option>
-        </Select>
-        <Button icon={<SearchOutlined />} onClick={fetchData}>Yenile</Button>
+      <Space style={{ marginBottom: 18, flexWrap: "wrap" }}>
+        <Input.Search
+          allowClear
+          style={{ width: 220 }}
+          placeholder="Açıklama ara..."
+          onSearch={setSearch}
+        />
+        <Select
+          mode="multiple"
+          style={{ width: 180 }}
+          allowClear
+          placeholder="Hat seç"
+          onChange={setFilterLine}
+          options={lines.map((l) => ({ value: l.id, label: l.code }))}
+        />
+        <Select
+          allowClear
+          style={{ width: 160 }}
+          placeholder="Üretim Etkisi"
+          onChange={setFilterImpact}
+          options={[
+            { value: true, label: "Etkiledi" },
+            { value: false, label: "Etkilemedi" },
+          ]}
+        />
+        <Button icon={<ReloadOutlined />} onClick={fetchFaults}>Yenile</Button>
+        <Button icon={<PlusOutlined />} type="primary" onClick={() => setModalOpen(true)}>
+          Yeni Arıza
+        </Button>
+        <Button icon={<FileExcelOutlined />} onClick={exportExcel}>
+          Excel
+        </Button>
       </Space>
 
       {/* Tablo */}
-      {loading ? <Spin style={{margin:48}}/> : (
       <Table
-        dataSource={filteredData}
+        dataSource={faults}
+        columns={columns}
         rowKey="id"
+        loading={loading}
         bordered
-        pagination={{pageSize:10}}
-        locale={{emptyText: <Empty description="Kayıt yok"/>}}
-        columns={[
-          {title: "Açıklama", dataIndex: "description", render: (v:any, r:any)=>
-            <Button type="link" onClick={()=>setDetail(r)}>{v}</Button>},
-          {title: "Durum", dataIndex: "status", render: (v:string)=> <Tag color={
-            v==="Açık" ? "red" : v==="Kapalı" ? "green" : "orange"
-          }>{v}</Tag>},
-          {title: "Önem", dataIndex: "importance", render: (v:string)=> <Tag>{v}</Tag>},
-          {title: "Kullanıcı", dataIndex: ["user","email"]},
-          {title: "Lokasyon", dataIndex: "location"},
-          {title: "Üretimi Etkiledi mi?", dataIndex:"productionImpact", render: (v:boolean)=> v ? <Tag color="red">Evet</Tag> : <Tag>Hayır</Tag> },
-          {title: "Kayıt Tarihi", dataIndex:"date", render:(v:any)=> moment(v).format("DD.MM.YYYY HH:mm")},
-          {title: "Duruş", dataIndex: "productionStop", render: (v:any)=> v?<Tag color="purple">{v.line} - {v.duration}dk</Tag>:"-"},
-          {title: "Dosya", dataIndex: "files", render:(f:any[])=>
-            f?.length? <FileImageOutlined style={{fontSize:20}}/> : null
-          },
-        ]}
+        size="middle"
+        pagination={{ pageSize: 10, showSizeChanger: true }}
+        scroll={{ x: 950 }}
+        style={{ background: "#f8fafd", borderRadius: 18 }}
+        rowClassName={(_, i) => (i % 2 === 0 ? "even-row" : "odd-row")}
       />
-      )}
 
-      {/* Yeni Arıza Modalı */}
+      {/* Ekle Modal */}
       <Modal
         open={modalOpen}
-        title="Yeni Arıza Kaydı"
-        onCancel={()=>setModalOpen(false)}
-        onOk={onOk}
+        title="Yeni Arıza"
+        onCancel={() => setModalOpen(false)}
+        onOk={() => form.submit()}
         okText="Kaydet"
-        cancelText="Vazgeç"
         destroyOnClose
-        maskClosable={false}
       >
-        <Form form={form} layout="vertical">
-          <Form.Item label="Açıklama" name="description" rules={[{required:true}]}>
-            <Input />
+        <Form
+          form={form}
+          layout="vertical"
+          initialValues={{ productionImpact: true }}
+          onFinish={handleAdd}
+        >
+          <Form.Item
+            label="Açıklama"
+            name="description"
+            rules={[{ required: true, message: "Açıklama girin" }]}
+          >
+            <Input.TextArea />
           </Form.Item>
           <Form.Item label="Lokasyon" name="location">
             <Input />
           </Form.Item>
-          <Form.Item label="Önem" name="importance" rules={[{required:true}]}>
-            <Select>
-              {importanceOptions.map(o=><Select.Option key={o} value={o}>{o}</Select.Option>)}
-            </Select>
+          <Form.Item
+            label="Tarih"
+            name="date"
+            rules={[{ required: true, message: "Tarih seçin" }]}
+          >
+            <DatePicker showTime style={{ width: "100%" }} format="DD.MM.YYYY HH:mm" />
           </Form.Item>
-          <Form.Item label="Durum" name="status" rules={[{required:true}]}>
-            <Select>
-              {statusOptions.map(o=><Select.Option key={o} value={o}>{o}</Select.Option>)}
-            </Select>
-          </Form.Item>
-          <Form.Item label="Üretimi Etkiledi mi?" name="productionImpact" valuePropName="checked">
-            <Checkbox />
-          </Form.Item>
-          <Form.Item label="Duruş Süresi (dk)" name="downtimeMinutes">
-            <InputNumber min={0}/>
-          </Form.Item>
-          <Form.Item label="Fotoğraf/Dosya" >
-            <Upload
-              beforeUpload={()=>false}
-              fileList={fileList}
-              onChange={({fileList})=>setFileList(fileList)}
-              accept="image/*,.pdf"
-              multiple
-              listType="picture"
-              maxCount={3}
+          <Form.Item
+            label="Üretimi Etkiledi mi?"
+            name="productionImpact"
+            rules={[{ required: true, message: "Bu alan zorunlu" }]}
+          >
+            <Select
+              onChange={v => {
+                setImpact(v);
+                if (!v) {
+                  setSelectedLines([]);
+                  form.setFieldsValue({ lines: [] });
+                }
+              }}
             >
-              <Button icon={<UploadOutlined />}>Dosya Seç</Button>
-            </Upload>
+              <Select.Option value={true}>Evet</Select.Option>
+              <Select.Option value={false}>Hayır</Select.Option>
+            </Select>
           </Form.Item>
+          {impact && (
+            <>
+              <Form.Item
+                label="Etkilenen Hat(lar)"
+                name="lines"
+                rules={[{ required: true, message: "Hat seçin", type: "array" }]}
+              >
+                <Select
+                  mode="multiple"
+                  onChange={setSelectedLines}
+                  options={lines.map((l) => ({ value: l.id, label: l.code }))}
+                />
+              </Form.Item>
+              {selectedLines.map((lid) => (
+                <Form.Item
+                  key={lid}
+                  label={`Duruş Süresi (dk) - ${lines.find((l) => l.id === lid)?.code}`}
+                  name={`downtimeMin_${lid}`}
+                  rules={[
+                    { required: true, message: "Süre girin" },
+                    { pattern: /^[0-9]+$/, message: "Pozitif tam sayı girin" },
+                  ]}
+                >
+                  <Input />
+                </Form.Item>
+              ))}
+            </>
+          )}
         </Form>
       </Modal>
 
-      {/* Detay MODAL */}
-      <Modal open={!!detail} title="Arıza Detay" footer={null} onCancel={()=>setDetail(null)}>
+      {/* Detay Modalı */}
+      <Modal
+        title="Arıza Detayı"
+        open={!!detail}
+        onCancel={() => setDetail(null)}
+        footer={null}
+        width={600}
+      >
         {detail && (
           <div>
-            <div><b>Açıklama:</b> {detail.description}</div>
-            <div><b>Durum:</b> {detail.status}</div>
-            <div><b>Önem:</b> {detail.importance}</div>
-            <div><b>Kullanıcı:</b> {detail.user?.email}</div>
-            <div><b>Lokasyon:</b> {detail.location}</div>
-            <div><b>Üretimi Etkiledi mi?:</b> {detail.productionImpact ? "Evet" : "Hayır"}</div>
-            <div><b>Kayıt Tarihi:</b> {moment(detail.date).format("DD.MM.YYYY HH:mm")}</div>
-            {detail.productionStop && (
-              <div>
-                <b>Duruş:</b> {detail.productionStop.line} ({detail.productionStop.duration}dk)
-              </div>
-            )}
-            <div style={{marginTop:12}}><b>Dosyalar:</b><br/>
-              {detail.files?.map((f:any) => (
-                <a key={f.id} href={f.url} target="_blank" rel="noopener noreferrer">
-                  <img src={f.url} alt={f.fileName} style={{width:80, margin:6, borderRadius:8, border:"1px solid #eee"}}/>
-                </a>
+            <p><b>Açıklama:</b> {detail.description}</p>
+            <p><b>Tarih:</b> {moment(detail.date).format("DD.MM.YYYY HH:mm")}</p>
+            <p><b>Lokasyon:</b> {detail.location}</p>
+            <p>
+              <b>Üretim Etkisi:</b>{" "}
+              {detail.productionImpact ? (
+                <Tag color="red">Etkiledi</Tag>
+              ) : (
+                <Tag color="green">Etkilemedi</Tag>
+              )}
+            </p>
+            <p>
+              <b>Hat(lar):</b>{" "}
+              {detail.lines.map((l) => (
+                <Tag key={l.line.id}>
+                  {l.line.code} ({l.downtimeMin}dk)
+                </Tag>
               ))}
-            </div>
+            </p>
+            <p>
+              <b>Kullanıcı:</b> {detail.user?.email || "-"}
+            </p>
+            <p>
+              <b>Kayıt Tarihi:</b> {moment(detail.createdAt).format("DD.MM.YYYY HH:mm")}
+            </p>
           </div>
         )}
       </Modal>
     </div>
   );
 };
-export default GeneralFaultsBook;
+
+export default FaultBookEnterprise;
