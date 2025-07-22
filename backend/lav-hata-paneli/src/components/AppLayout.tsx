@@ -38,6 +38,7 @@ import {
   ExclamationCircleOutlined,
   GlobalOutlined,
   DownOutlined,
+  FieldTimeOutlined,        // <--- YENİ! 
 } from "@ant-design/icons";
 import { useNavigate, useLocation, Outlet } from "react-router-dom";
 import Announcements from "./Announcements";
@@ -57,11 +58,12 @@ const THEMES = [
   { key: "dark", label: "Koyu", icon: <SkinOutlined /> },
 ];
 
-// GÜNCELLEME: /general-faults route eklendi
+// --------- Breadcrumb'a Duruşlar eklendi! ---------
 const breadcrumbNames: { [key: string]: string } = {
   "/": "Dashboard",
   "/equipment": "Ekipmanlar",
-  "/general-faults": "Arıza Defteri",   // <-- EKLENDİ
+  "/general-faults": "Arıza Defteri",
+  "/downtimes": "Duruşlar",     // <--- EKLENDİ
   "/users": "Kullanıcılar",
   "/settings": "Ayarlar",
   "/admin": "Admin Panel",
@@ -139,14 +141,15 @@ const AppLayout: React.FC<{ children?: ReactNode }> = ({ children }) => {
     ]);
   }, []);
 
-  // GÜNCELLEME: Menüyü güncelledim, Faults yerine GeneralFaults
+  // -------- Menüye Duruşlar eklendi! --------
   const menuItems = useMemo(
     () => [
       { key: "/", icon: <HomeOutlined />, label: "Dashboard" },
       { key: "/equipment", icon: <AppstoreOutlined />, label: "Ekipmanlar" },
-      { key: "/general-faults", icon: <FileTextOutlined />, label: "Arıza Defteri" }, // <-- EKLENDİ
+      { key: "/general-faults", icon: <FileTextOutlined />, label: "Arıza Defteri" },
+      { key: "/downtimes", icon: <FieldTimeOutlined />, label: "Duruşlar" }, // <--- YENİ!
       { key: "/users", icon: <TeamOutlined />, label: "Kullanıcılar" },
-      { key: "/settings", icon: <SettingOutlined />, label: "Ayarlar" },
+      { key: "/settings", icon: <SettingOutlined />, label: "Profil" },
       ...(userInfo && userInfo.role === "admin"
         ? [{ key: "/admin", icon: <SettingOutlined />, label: "Admin Panel" }]
         : []),

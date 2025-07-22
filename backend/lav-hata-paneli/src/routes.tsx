@@ -6,6 +6,7 @@ import Equipment from "./pages/Equipment";
 import Motors from "./pages/Motors";
 import MotorDetail from "./pages/MotorDetail";
 import GeneralFaultsBook from "./pages/GeneralFaultsBook";
+import FaultDowntimeDashboard from "./pages/FaultDowntimeDashboard";  // <-- YENİ
 import Users from "./pages/Users";
 import Profile from "./pages/Profile";
 import AdminPanel from "./pages/AdminPanel";
@@ -33,7 +34,8 @@ const AppRoutes = () => {
           <Route path="equipment" element={<Equipment />} />
           <Route path="equipment/motors" element={<Motors />} />
           <Route path="equipment/motors/:id" element={<MotorDetail />} />
-          <Route path="general-faults" element={<GeneralFaultsBook />} /> {/* YENİ */}
+          <Route path="general-faults" element={<GeneralFaultsBook />} />
+          <Route path="downtimes" element={<FaultDowntimeDashboard />} /> {/* YENİ: Duruşlar */}
           <Route path="users" element={<Users />} />
           <Route path="settings" element={<Profile />} />
           <Route path="admin" element={<AdminPanel />} />
