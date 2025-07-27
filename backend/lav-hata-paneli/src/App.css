@@ -6,8 +6,8 @@ html, body, #root {
   width: 100vw;
   margin: 0;
   padding: 0;
-  background: #f7f8fa !important; /* Kurumsal açık arka plan */
-  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+  background: linear-gradient(135deg, #fff0fa 60%, #fe0094 100%);
+  font-family: 'Inter', 'Montserrat', 'Segoe UI', Arial, sans-serif;
   box-sizing: border-box;
 }
 
@@ -19,23 +19,17 @@ html, body, #root {
 
 /* Sidebar ve Header gölge efektleri */
 .ant-layout-sider {
-  box-shadow: 2px 0 24px #ac47a425;
+  box-shadow: 2px 0 24px #fe009425;
+  transition: none !important;
+  transform: none !important;
+  animation: none !important;
 }
 
-/* Responsive scroll */
-::-webkit-scrollbar {
-  width: 8px;
-  background: #ece0ef;
-}
-::-webkit-scrollbar-thumb {
-  background: #ac47a4;
-  border-radius: 7px;
-}
 
 /* Cardlar için yumuşak gölge */
 .ant-card {
   border-radius: 22px !important;
-  box-shadow: 0 2px 16px #b486be1c !important;
+  box-shadow: 0 2px 16px #fe00941c !important;
 }
 
 /* Animasyon ve hover efektleri */
@@ -58,14 +52,238 @@ a:hover, .ant-btn:hover, .ant-card:hover {
   width: 100%;
   min-height: calc(100vh - 70px);
   padding: 36px 24px 28px 24px;
-  background: transparent;
+  background: linear-gradient(135deg, #fff0fa 60%, #fe0094 100%);
   display: flex;
   flex-direction: column;
   align-items: stretch;
+  background: linear-gradient(135deg, #fffafd 80%, #f4e2ff 100%);
+  border-radius: 24px;
+  box-shadow: 0 4px 32px #fe00941a;
+  padding: 48px 36px 36px 36px;
+  margin: 32px 0 24px 0;
+  min-height: 70vh;
 }
 
 /* Header fix */
 .ant-layout-header {
   z-index: 3 !important;
   position: relative;
+}
+
+/* Butonlar ve aktif öğeler */
+.ant-btn-primary, .ant-menu-item-selected, .ant-tag {
+  background: linear-gradient(90deg, #fe0094 60%, #a13b97 100%) !important;
+  border: none !important;
+  color: #fff !important;
+}
+
+/* Link ve hover renkleri */
+a, .ant-btn-link {
+  color: #fe0094 !important;
+}
+a:hover, .ant-btn-link:hover {
+  color: #a13b97 !important;
+}
+
+h1, h2, h3, .ant-typography {
+  font-family: 'Montserrat', 'Inter', 'Segoe UI', Arial, sans-serif !important;
+  font-weight: 900 !important;
+  letter-spacing: 1.2px;
+  color: #fe0094 !important;
+}
+
+.card {
+  background: #fff;
+  margin: 24px 18px 24px 0;
+  box-shadow: 0 4px 24px #fe009425;
+  border-radius: 18px;
+  padding: 32px;
+  transition: box-shadow 0.3s;
+}
+.card:hover {
+  box-shadow: 0 8px 32px #fe009455;
+}
+
+.button {
+  background: linear-gradient(90deg, #fe0094 60%, #a13b97 100%);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 32px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 2px 8px #fe009425;
+}
+.button:hover {
+  transform: translateY(-2px) scale(1.04);
+  box-shadow: 0 4px 16px #fe009455;
+}
+
+/* Fade-in animasyonu */
+.fade-in {
+  animation: fadeIn 0.8s ease;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(24px);}
+  to { opacity: 1; transform: translateY(0);}
+}
+
+/* Dots animasyonu */
+.dots {
+  width: 3em;
+  height: 3em;
+  display: grid;
+  grid-template-rows: repeat(3, 1fr);
+  grid-template-columns: repeat(3, 1fr);
+  justify-items: center;
+  align-items: center;
+}
+
+.dots > div {
+  width: 0.5em;
+  height: 0.5em;
+  background-color: #ffff;
+  border-radius: 50%;
+  animation: fade 1.5s alternate ease-in-out infinite;
+}
+
+.dots > div:nth-of-type(2),
+.dots > div:nth-of-type(4) {
+  animation-delay: 0.25s;
+}
+
+.dots > div:nth-of-type(3),
+.dots > div:nth-of-type(5),
+.dots > div:nth-of-type(7) {
+  animation-delay: 0.5s;
+}
+
+.dots > div:nth-of-type(6),
+.dots > div:nth-of-type(8) {
+  animation-delay: 0.75s;
+}
+
+.dots > div:nth-of-type(9) {
+  animation-delay: 1s;
+}
+
+@keyframes fade {
+  to {
+    opacity: 0.2;
+  }
+}
+
+.flip-container {
+  width: 400px;
+  margin: 0 auto;
+  perspective: 1200px;
+}
+.flipper {
+  position: relative;
+  width: 100%;
+  transition: transform 0.7s cubic-bezier(.36,.07,.19,.97);
+  transform-style: preserve-3d;
+}
+.flipper.flipped {
+  transform: rotateY(180deg);
+}
+.front, .back {
+  position: absolute;
+  width: 100%;
+  backface-visibility: hidden;
+  left: 0; top: 0;
+}
+.front {
+  z-index: 2;
+}
+.back {
+  transform: rotateY(180deg);
+  z-index: 1;
+}
+
+.main-content h1, .dashboard-content h1 {
+  font-size: 2.2rem;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+  color: #fe0094;
+  margin-bottom: 18px;
+  border-bottom: 2px solid #f4e2ff;
+  padding-bottom: 8px;
+}
+
+/* Responsive mobil düzen */
+@media (max-width: 950px) {
+  .main-content, .dashboard-content {
+    padding: 18px 6px 18px 6px;
+    margin: 12px 0 12px 0;
+    border-radius: 12px;
+  }
+  .card {
+    margin: 16px 0;
+  }
+}
+
+/* Modern dönen ve pulse'lu spinner */
+.modern-spinner {
+  display: flex;
+  width: 3.5em;
+  height: 3.5em;
+  border: 3px solid transparent;
+  border-top-color: #3cefff;
+  border-bottom-color: #3cefff;
+  border-radius: 50%;
+  animation: spin 1.5s linear infinite;
+  justify-content: center;
+  align-items: center;
+  margin: auto;
+}
+
+.modern-spinner::before {
+  content: '';
+  display: block;
+  width: 0.75em;
+  height: 0.75em;
+  border: 3px solid #3cefff;
+  border-radius: 50%;
+  animation: pulse 1s alternate ease-in-out infinite;
+  margin: auto;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  from {
+    transform: scale(0.5);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+/* Breadcrumb ana rengi */
+.ant-breadcrumb {
+  color: #fff !important;
+}
+
+/* Breadcrumb link (örn: Dashboard) */
+.ant-breadcrumb-link a {
+  color: #fe0094 !important;
+  font-weight: 700;
+  transition: color 0.2s;
+  text-decoration: none;
+}
+.ant-breadcrumb-link a:hover {
+  color: #a13b97 !important;
+}
+
+/* Breadcrumb son (aktif) */
+.ant-breadcrumb .ant-breadcrumb-link:last-child,
+.ant-breadcrumb .ant-breadcrumb-link:last-child span {
+  color: #2b154b !important;
+  font-weight: 900;
 }

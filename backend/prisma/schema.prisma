@@ -85,6 +85,8 @@ model GeneralFault {
   files            File[]
   actionLogs       ActionLog[]
   createdAt        DateTime             @default(now())
+  status           String               @default("open") // "open" | "closed"
+  closedAt         DateTime?            // Kapanış zamanı
 }
 
 // === ARIZA-HAT PIVOTU ===

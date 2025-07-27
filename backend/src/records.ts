@@ -7,7 +7,7 @@ import nodemailer from "nodemailer";
 const router = Router();
 const prisma = new PrismaClient();
 
-// Arıza kayıtlarını getir
+// Arıza kayıtlarını getir (değişiklik yok)
 router.get("/", authenticateToken, async (req: any, res) => {
   try {
     const { motorId } = req.query;
@@ -35,7 +35,7 @@ router.get("/", authenticateToken, async (req: any, res) => {
   }
 });
 
-// Kullanıcının kendi kayıtları
+// Kullanıcının kendi kayıtları (değişiklik yok)
 router.get("/my", authenticateToken, async (req: any, res) => {
   try {
     const userId = req.user.id;
@@ -69,7 +69,7 @@ router.post("/", authenticateToken, async (req: any, res) => {
       }
     });
 
-    // Eğer bu arıza tipi bu motor için 3. kez tekrarlandıysa kritik mail gönder
+    // Aynı motor, aynı arıza tipinden 3 kez tekrarlandıysa mail at
     const sameFaultCount = await prisma.record.count({
       where: {
         motorId: Number(motorId),
@@ -80,7 +80,39 @@ router.post("/", authenticateToken, async (req: any, res) => {
       const motor = await prisma.motor.findUnique({ where: { id: Number(motorId) } });
       const faultType = await prisma.faultType.findUnique({ where: { id: Number(faultTypeId) } });
 
-      // Gerekli mail işlemleri burada (istersen kaldırabilirsin)
+      // MAIL KISMI
+      let transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: "zek4345@gmail.com",             // Senin gönderen mail adresin
+          pass: "vmej mfkv qmws uvcf"            // Gmail uygulama şifresi (boşlukları da aynen bırak!)
+        }
+      });
+
+      let mailOptions = {
+        from: "zek4345@gmail.com",
+        to: "serkancicekogluiu@gmail.com",             // Müdürün/mail atılacak adres
+        subject: "Kritik Uyarı: Motor Arızası 3 Kez Tekrarladı!",
+        html: `
+          <h2><b>${motor?.name || "Motor " + motorId}</b> için aynı arıza tipi 3. kez kaydedildi!</h2>
+          <ul>
+            <li><b>Motor Adı:</b> ${motor?.name || "-"} </li>
+            <li><b>Seri No:</b> ${motor?.serial || "-"} </li>
+            <li><b>Arıza Tipi:</b> ${faultType?.name || "-"} </li>
+            <li><b>Açıklama:</b> ${desc} </li>
+            <li><b>Kayıt Tarihi:</b> ${new Date().toLocaleString("tr-TR")} </li>
+          </ul>
+          <p>Lütfen inceleyiniz.</p>
+        `
+      };
+
+      transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+          console.error("Mail gönderilemedi:", error);
+        } else {
+          console.log("Kritik arıza bildirimi gönderildi:", info.response);
+        }
+      });
     }
 
     res.status(201).json(record);
@@ -89,7 +121,7 @@ router.post("/", authenticateToken, async (req: any, res) => {
   }
 });
 
-// Arıza kaydını güncelle
+// Arıza kaydını güncelle (değişiklik yok)
 router.put("/:id", authenticateToken, requireAdmin, async (req: any, res) => {
   const { id } = req.params;
   const { motorId, faultTypeId, desc, duration, date } = req.body;
@@ -110,7 +142,7 @@ router.put("/:id", authenticateToken, requireAdmin, async (req: any, res) => {
   }
 });
 
-// Arıza kaydını sil
+// Arıza kaydını sil (değişiklik yok)
 router.delete("/:id", authenticateToken, requireAdmin, async (req: any, res) => {
   const { id } = req.params;
   try {
