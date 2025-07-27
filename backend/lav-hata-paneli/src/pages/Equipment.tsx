@@ -58,9 +58,7 @@ const Equipment: React.FC = () => {
         minHeight: "88vh",
       }}
     >
-      <Title level={2} style={{ fontWeight: 800, marginBottom: 36, color: "#32324d" }}>
-        Ekipmanlar
-      </Title>
+      
       <Row gutter={[32, 32]} justify="center">
         {equipmentItems.map((item) => (
           <Col key={item.key} xs={24} sm={12} md={8}>

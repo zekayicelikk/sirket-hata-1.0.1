@@ -1,50 +1,27 @@
-import React, {
-  useState,
-  useEffect,
-  useMemo,
-  type ReactNode,
-  useCallback,
-} from "react";
+// RENK REHBERİ
+// Ana Koyu: #232545, #181533
+// Ana Pembe: #fe0094
+// Mor: #a13b97, #ac47a4, #e9b7e4
+// Beyaz: #fff
+// Açık Gri: #f7f8fa, #ece3ee
+
+import React, { useState, useEffect, useMemo, type ReactNode, useCallback } from "react";
 import {
-  Layout,
-  Menu,
-  Avatar,
-  Dropdown,
-  Tooltip,
-  Badge,
-  Button,
-  Input,
-  Breadcrumb,
-  Drawer,
-  List,
-  Switch,
-  Spin,
-  Space,
+  Layout, Menu, Avatar, Dropdown, Tooltip, Badge, Button, Input,
+  Breadcrumb, Drawer, List, Spin,
 } from "antd";
 import {
-  UserOutlined,
-  LogoutOutlined,
-  SettingOutlined,
-  MenuUnfoldOutlined,
-  MenuFoldOutlined,
-  BellOutlined,
-  HomeOutlined,
-  AppstoreOutlined,
-  FileTextOutlined,
-  TeamOutlined,
-  SkinOutlined,
-  SearchOutlined,
-  MailOutlined,
-  ExclamationCircleOutlined,
-  GlobalOutlined,
-  DownOutlined,
-  FieldTimeOutlined,        // <--- YENİ! 
+  UserOutlined, LogoutOutlined, SettingOutlined, MenuUnfoldOutlined, MenuFoldOutlined,
+  BellOutlined, HomeOutlined, AppstoreOutlined, FileTextOutlined, TeamOutlined,
+  SkinOutlined, SearchOutlined, MailOutlined, ExclamationCircleOutlined, GlobalOutlined,
+  FieldTimeOutlined,
 } from "@ant-design/icons";
 import { useNavigate, useLocation, Outlet } from "react-router-dom";
 import Announcements from "./Announcements";
+import lavLogo from "../assets/lav-logo.png"; // LOGONU BURADAN İMPORT ET
 
-const DESKTOP_BREAKPOINT = 900; // px
-const DARK_BG = "#1d1833";
+const DESKTOP_BREAKPOINT = 900;
+const DARK_BG = "#181533";
 const LIGHT_BG = "#f7f8fa";
 
 const LANGUAGES = [
@@ -52,21 +29,24 @@ const LANGUAGES = [
   { key: "en", name: "English" },
   { key: "de", name: "Deutsch" },
 ];
-
 const THEMES = [
   { key: "light", label: "Açık", icon: <SkinOutlined /> },
   { key: "dark", label: "Koyu", icon: <SkinOutlined /> },
 ];
 
-// --------- Breadcrumb'a Duruşlar eklendi! ---------
-const breadcrumbNames: { [key: string]: string } = {
-  "/": "Dashboard",
+const breadcrumbNames = {
+  "/": "Ana Sayfa",
   "/equipment": "Ekipmanlar",
   "/general-faults": "Arıza Defteri",
-  "/downtimes": "Duruşlar",     // <--- EKLENDİ
+  "/downtimes": "Duruşlar",
   "/users": "Kullanıcılar",
   "/settings": "Ayarlar",
   "/admin": "Admin Panel",
+} as const;
+
+type RouteKey = keyof typeof breadcrumbNames;
+const getBreadcrumbName = (key: string): string => {
+  return breadcrumbNames[key as RouteKey] ?? key.charAt(0).toUpperCase() + key.slice(1);
 };
 
 const { Sider, Content, Header, Footer } = Layout;
@@ -76,12 +56,8 @@ const AppLayout: React.FC<{ children?: ReactNode }> = ({ children }) => {
   const location = useLocation();
 
   const [collapsed, setCollapsed] = useState(window.innerWidth < DESKTOP_BREAKPOINT);
-  const [theme, setTheme] = useState(
-    localStorage.getItem("theme") || "light"
-  );
-  const [language, setLanguage] = useState(
-    localStorage.getItem("lang") || "tr"
-  );
+  const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
+  const [language, setLanguage] = useState(localStorage.getItem("lang") || "tr");
   const [sidebarMobile, setSidebarMobile] = useState(false);
 
   const [userInfo, setUserInfo] = useState<any>(null);
@@ -120,7 +96,7 @@ const AppLayout: React.FC<{ children?: ReactNode }> = ({ children }) => {
         description: "A101 Motorunda yüksek sıcaklık algılandı.",
         datetime: "13:05",
         read: false,
-        icon: <ExclamationCircleOutlined style={{ color: "#b80070" }} />,
+        icon: <ExclamationCircleOutlined style={{ color: "#fe0094" }} />,
       },
       {
         id: 2,
@@ -128,7 +104,7 @@ const AppLayout: React.FC<{ children?: ReactNode }> = ({ children }) => {
         description: "Sürücü S-01 için 10 gün içinde bakım gerekiyor.",
         datetime: "09:45",
         read: false,
-        icon: <MailOutlined style={{ color: "#00bfff" }} />,
+        icon: <MailOutlined style={{ color: "#2e2d55" }} />,
       },
       {
         id: 3,
@@ -136,18 +112,17 @@ const AppLayout: React.FC<{ children?: ReactNode }> = ({ children }) => {
         description: "Versiyon 2.7.5 yayınlandı.",
         datetime: "Dün",
         read: true,
-        icon: <SettingOutlined style={{ color: "#a060e9" }} />,
+        icon: <SettingOutlined style={{ color: "#a13b97" }} />,
       },
     ]);
   }, []);
 
-  // -------- Menüye Duruşlar eklendi! --------
   const menuItems = useMemo(
     () => [
-      { key: "/", icon: <HomeOutlined />, label: "Dashboard" },
+      { key: "/", icon: <HomeOutlined />, label: "Ana Sayfa" },
       { key: "/equipment", icon: <AppstoreOutlined />, label: "Ekipmanlar" },
       { key: "/general-faults", icon: <FileTextOutlined />, label: "Arıza Defteri" },
-      { key: "/downtimes", icon: <FieldTimeOutlined />, label: "Duruşlar" }, // <--- YENİ!
+      { key: "/downtimes", icon: <FieldTimeOutlined />, label: "Duruşlar" },
       { key: "/users", icon: <TeamOutlined />, label: "Kullanıcılar" },
       { key: "/settings", icon: <SettingOutlined />, label: "Profil" },
       ...(userInfo && userInfo.role === "admin"
@@ -207,14 +182,13 @@ const AppLayout: React.FC<{ children?: ReactNode }> = ({ children }) => {
     let built = "";
     return [
       <Breadcrumb.Item key="home" onClick={() => nav("/")}>
-        Dashboard
+        Ana Sayfa
       </Breadcrumb.Item>,
       ...paths.map((p) => {
         built += "/" + p;
         return (
           <Breadcrumb.Item key={built} onClick={() => nav(built)}>
-            {breadcrumbNames["/" + p] ||
-              p.charAt(0).toUpperCase() + p.slice(1)}
+            {getBreadcrumbName("" + p)}
           </Breadcrumb.Item>
         );
       }),
@@ -224,7 +198,7 @@ const AppLayout: React.FC<{ children?: ReactNode }> = ({ children }) => {
   const notifCount = notifications.filter((n) => !n.read).length;
   const isDark = theme === "dark";
   const sidebarBg = isDark
-    ? "linear-gradient(180deg,#181533 80%,#4c3758 160%)"
+    ? "linear-gradient(180deg,#181533 80%,#2e2d55 160%)"
     : "linear-gradient(180deg,#232545 70%,#e9b7e4 180%)";
   const mainBg = isDark ? DARK_BG : LIGHT_BG;
 
@@ -233,17 +207,18 @@ const AppLayout: React.FC<{ children?: ReactNode }> = ({ children }) => {
 
   const menuBtnStyle = {
     color: "#fff",
-    background: "rgba(255,255,255,0.09)",
+    background: "rgba(249, 243, 243, 0.09)",
     border: "none",
     fontSize: 22,
     marginRight: 14,
   };
 
-  const pageTitle =
-    breadcrumbNames[location.pathname.split("/")[1]
-      ? "/" + location.pathname.split("/")[1]
-      : "/"
-    ] || "Panel";
+  // type hatası olmasın diye:
+  const pathKey = (() => {
+    const main = location.pathname.split("/")[1];
+    return (main ? "/" + main : "/") as RouteKey;
+  })();
+  const pageTitle = getBreadcrumbName(pathKey);
 
   useEffect(() => {
     document.body.className = isDark ? "dark-theme" : "";
@@ -278,31 +253,28 @@ const AppLayout: React.FC<{ children?: ReactNode }> = ({ children }) => {
         className="main-sidebar"
       >
         <div
-          style={{
-            margin: "28px 0 36px 0",
-            paddingLeft: collapsed ? 0 : 30,
-            fontSize: collapsed ? 18 : 27,
-            fontWeight: 900,
-            letterSpacing: 1,
-            color: "#fff",
-            textShadow: "0 2px 10px #ac47a430",
-            fontFamily: "'Montserrat', 'Segoe UI', Arial",
-          }}
-        >
-          <span style={{ letterSpacing: 1 }}>LAV</span>
-          {!collapsed && (
-            <span
-              style={{
-                fontWeight: 400,
-                fontSize: 15,
-                marginLeft: 8,
-                opacity: 0.73,
-              }}
-            >
-              hata paneli
-            </span>
-          )}
-        </div>
+  style={{
+    margin: collapsed ? "30px 0" : "42px 0 48px 0",
+    width: "100%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: collapsed ? 60 : 50, // logo alanı daha yüksek ve tam ortalı
+    transition: "all 0.3s",
+  }}
+>
+  <img
+    src={lavLogo}
+    alt="LAV Logo"
+    style={{
+      height: collapsed ? 48 : 70,  // büyütülmüş logo
+      width: "auto",
+      display: "block",
+      filter: "drop-shadow(0 2px 8px #18153360)",
+      transition: "all 0.3s cubic-bezier(.45,.15,.38,1.04)",
+    }}
+  />
+</div>
         <Menu
           mode="inline"
           theme="dark"
@@ -336,14 +308,21 @@ const AppLayout: React.FC<{ children?: ReactNode }> = ({ children }) => {
             fontSize: 20,
             fontWeight: 900,
             color: "#fff",
+            display: "flex",
+            alignItems: "center",
           }}
         >
-          LAV{" "}
-          <span
-            style={{ fontWeight: 400, fontSize: 13, marginLeft: 8, opacity: 0.7 }}
-          >
-            hata paneli
-          </span>
+          <img
+            src={lavLogo}
+            alt="LAV Logo"
+            style={{
+              height: 33,
+              width: "auto",
+              display: "block",
+              filter: "drop-shadow(0 1px 6px #18153344)",
+              marginRight: 8,
+            }}
+          />
         </div>
         <Menu
           mode="inline"
@@ -380,8 +359,8 @@ const AppLayout: React.FC<{ children?: ReactNode }> = ({ children }) => {
           style={{
             height: 70,
             background: isDark
-              ? "linear-gradient(90deg,#1d1833 0%,#60408c 120%)"
-              : "linear-gradient(90deg,#ac47a4 0%,#e9b7e4 120%)",
+              ? "linear-gradient(90deg, #232545 0%, #3a2858 120%)"
+              : "linear-gradient(90deg,#fff 0%, #f7e3fa 60%, #ac47a4 100%)",
             display: "flex",
             alignItems: "center",
             padding: "0 34px 0 20px",
@@ -411,12 +390,12 @@ const AppLayout: React.FC<{ children?: ReactNode }> = ({ children }) => {
           />
           <span
             style={{
-              color: "#fff",
+              color: "#fdf9fdff",
               fontWeight: 700,
-              fontSize: 21,
+              fontSize: 25,
               letterSpacing: 1,
               marginRight: 28,
-              textShadow: "0 2px 6px #d86ec66a",
+              textShadow: "0 2px 6px #fff2",
               userSelect: "none",
               fontFamily: "'Montserrat', 'Segoe UI'",
             }}
@@ -428,7 +407,7 @@ const AppLayout: React.FC<{ children?: ReactNode }> = ({ children }) => {
           <div style={{ marginRight: 24, minWidth: 200 }}>
             <Breadcrumb
               separator=">"
-              style={{ fontWeight: 500, fontSize: 15, color: "#fff" }}
+              style={{ fontWeight: 500, fontSize: 17, color: "#39224f" }}
             >
               {breadcrumbs}
             </Breadcrumb>
@@ -443,7 +422,7 @@ const AppLayout: React.FC<{ children?: ReactNode }> = ({ children }) => {
                 style={{
                   marginRight: 10,
                   background: "#fff",
-                  color: "#ac47a4",
+                  color: "#fe0094",
                   boxShadow: "0 2px 8px #c7b8d8",
                   fontSize: 20,
                 }}
@@ -467,7 +446,7 @@ const AppLayout: React.FC<{ children?: ReactNode }> = ({ children }) => {
             <Button
               shape="circle"
               icon={<GlobalOutlined />}
-              style={{ marginRight: 8, fontSize: 18 }}
+              style={{ marginRight: 8, fontSize: 18, color: "#6d538c" }}
             />
           </Dropdown>
           {/* === Tema seçimi === */}
@@ -486,7 +465,7 @@ const AppLayout: React.FC<{ children?: ReactNode }> = ({ children }) => {
             <Button
               shape="circle"
               icon={<SkinOutlined />}
-              style={{ marginRight: 8, fontSize: 18 }}
+              style={{ marginRight: 8, fontSize: 18, color: "#6d538c" }}
             />
           </Dropdown>
           {/* === Kullanıcı === */}
@@ -495,7 +474,7 @@ const AppLayout: React.FC<{ children?: ReactNode }> = ({ children }) => {
               size={42}
               style={{
                 background: isDark
-                  ? "linear-gradient(135deg,#60408c 65%,#e9b7e4 120%)"
+                  ? "linear-gradient(135deg, #2e2d55 65%, #a13b97 120%)"
                   : "linear-gradient(135deg, #ac47a4 65%, #e9b7e4 120%)",
                 color: "#fff",
                 fontWeight: 600,
@@ -644,7 +623,7 @@ const AppLayout: React.FC<{ children?: ReactNode }> = ({ children }) => {
             letterSpacing: 0.5,
           }}
         >
-          © {new Date().getFullYear()} LAV Hata Paneli | Powered by Zekayi 
+          © {new Date().getFullYear()} LAV Hata Paneli | Powered by Zekayi
         </Footer>
       </Layout>
     </Layout>

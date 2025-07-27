@@ -6,14 +6,14 @@ import Dashboard from "./pages/Dashboard";
 import Equipment from "./pages/Equipment";
 import Motors from "./pages/Motors";
 import MotorDetail from "./pages/MotorDetail";
-import GeneralFaultsBook from "./pages/GeneralFaultsBook"; // YENİ, bunu ekle
-import FaultDowntimeDashboard from "./pages/FaultDowntimeDashboard"; // YENİ, ekle!
+import GeneralFaultsBook from "./pages/GeneralFaultsBook";
+import FaultDowntimeDashboard from "./pages/FaultDowntimeDashboard"; // EKLEDİK!
 import Users from "./pages/Users";
 import Profile from "./pages/Profile";
 import AdminPanel from "./pages/AdminPanel";
 import AppLayout from "./components/AppLayout";
+import "./App.css";
 
-// Korumalı alanlar için bir component
 const ProtectedRoutes = () => (
   <AppLayout>
     <Outlet />
@@ -22,10 +22,11 @@ const ProtectedRoutes = () => (
 
 const App: React.FC = () => {
   const token = localStorage.getItem("token");
+
   return (
     <BrowserRouter>
       <Routes>
-        {/* Giriş ve Kayıt ekranları herkese açık */}
+        {/* Giriş ve Kayıt ekranları */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
@@ -37,15 +38,14 @@ const App: React.FC = () => {
             <Route path="equipment/motors" element={<Motors />} />
             <Route path="equipment/motors/:id" element={<MotorDetail />} />
             <Route path="general-faults" element={<GeneralFaultsBook />} />
-            <Route path="downtimes" element={<FaultDowntimeDashboard />} /> {/* YENİ */}
+            <Route path="downtimes" element={<FaultDowntimeDashboard />} /> {/* EKLENDİ */}
             <Route path="users" element={<Users />} />
             <Route path="settings" element={<Profile />} />
             <Route path="admin" element={<AdminPanel />} />
-            {/* Tanımsız url'de ana sayfaya */}
             <Route path="*" element={<Navigate to="/" />} />
           </Route>
         ) : (
-          // Eğer token yoksa, protected url'lerde login'e at!
+          // Token yoksa login ekranına yönlendir
           <Route path="*" element={<Navigate to="/login" />} />
         )}
       </Routes>

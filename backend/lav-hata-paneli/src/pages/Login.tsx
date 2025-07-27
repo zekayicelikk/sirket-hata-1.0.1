@@ -18,6 +18,8 @@ import {
   InfoCircleOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
+import lavLogo from "../assets/lav-logo.png";
+import Register from "./Register"; // Register bileşenini import et
 
 const { Title, Link, Text } = Typography;
 
@@ -26,6 +28,7 @@ const Login: React.FC = () => {
   const [form] = Form.useForm();
   const [showPassword, setShowPassword] = useState(false);
   const [shake, setShake] = useState(false);
+  const [showRegister, setShowRegister] = useState(false); // <-- EKLE
   const passwordInputRef = useRef<any>(null);
   const navigate = useNavigate();
 
@@ -102,154 +105,178 @@ const Login: React.FC = () => {
         minHeight: "100vh",
         width: "100vw",
         display: "flex",
-        alignItems: "center",
+        alignItems: "flex-start", // ortadan yukarıya alır
         justifyContent: "center",
         background:
           "radial-gradient(ellipse at 70% 30%, #f1eaff 0%, #a37fc6 100%)",
+        paddingTop: "7vh", // yukarıdan boşluk bırakır
       }}
     >
-      <Card
-        style={{
-          width: 400,
-          borderRadius: 20,
-          boxShadow: "0 8px 40px #7a34a966",
-          border: "none",
-          background: "linear-gradient(135deg, #ffffff 50%, #f4e2ff 120%)",
-          padding: 0,
-        }}
-        bodyStyle={{ padding: 36, paddingTop: 28 }}
-      >
-        <Title
-          level={3}
-          style={{
-            textAlign: "center",
-            marginBottom: 22,
-            fontWeight: 900,
-            letterSpacing: "2px",
-            color: "#7a34a9",
-          }}
-        >
-          LAV Hata Paneli Giriş
-        </Title>
-        <Form
-          layout="vertical"
-          form={form}
-          onFinish={handleFinish}
-          initialValues={{ rememberMe: true }}
-          style={{ marginTop: 10 }}
-          autoComplete="on"
-        >
-          <Form.Item
-            label={
-              <span>
-                E-posta{" "}
-                <Tooltip title="Şirket e-posta adresinizi giriniz.">
-                  <InfoCircleOutlined style={{ color: "#a37fc6" }} />
-                </Tooltip>
-              </span>
-            }
-            name="email"
-            rules={[
-              { required: true, message: "E-posta gerekli!" },
-              { type: "email", message: "Geçerli bir e-posta girin!" },
-            ]}
-          >
-            <Input
-              prefix={<MailOutlined />}
-              placeholder="ad.soyad@lav.com"
-              size="large"
-              autoFocus
-              autoComplete="username"
-              maxLength={64}
-              aria-label="E-posta adresi"
-            />
-          </Form.Item>
-          <Form.Item
-            label={
-              <span>
-                Şifre{" "}
-                <Tooltip title="Harf, rakam ve özel karakter içermelidir.">
-                  <InfoCircleOutlined style={{ color: "#a37fc6" }} />
-                </Tooltip>
-              </span>
-            }
-            name="password"
-            rules={[{ required: true, message: "Şifre gerekli!" }]}
-          >
-            <Input.Password
-              ref={passwordInputRef}
-              prefix={<LockOutlined />}
-              placeholder="••••••••"
-              size="large"
-              autoComplete="current-password"
-              aria-label="Şifre"
-              maxLength={32}
-              iconRender={visible =>
-                visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />
-              }
-              className={shake ? "animate-shake" : ""}
-              onPressEnter={() => form.submit()}
-            />
-          </Form.Item>
-          <Form.Item style={{ marginBottom: 4 }}>
-            <div
+      <div className="flip-container" style={{ perspective: 1200 }}>
+        <div className={`flipper${showRegister ? " flipped" : ""}`}>
+          <div className="front">
+            {/* --- Login Card --- */}
+            <Card
+              className="login-fade-in"
               style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-              }}
-            >
-              <Form.Item
-                name="rememberMe"
-                valuePropName="checked"
-                noStyle
-              >
-                <Checkbox>Beni hatırla</Checkbox>
-              </Form.Item>
-            </div>
-          </Form.Item>
-          <Form.Item style={{ marginBottom: 0 }}>
-            <Button
-              type="primary"
-              htmlType="submit"
-              loading={loading}
-              size="large"
-              style={{
-                width: "100%",
-                borderRadius: 12,
-                fontWeight: 700,
-                letterSpacing: 1,
-                marginTop: 8,
-                boxShadow: "0 3px 12px #a37fc622",
-                background: "linear-gradient(90deg,#a37fc6 60%,#7a34a9 100%)",
+                width: 400,
+                borderRadius: 20,
+                boxShadow: "0 8px 40px #7a34a966",
                 border: "none",
+                background: "linear-gradient(135deg, #ffffff 50%, #f4e2ff 120%)",
+                padding: 0,
               }}
-              aria-label="Giriş Yap"
+              bodyStyle={{ padding: 36, paddingTop: 28 }}
             >
-              {loading ? <LoadingOutlined /> : "Giriş Yap"}
-            </Button>
-          </Form.Item>
-          <Form.Item style={{ marginBottom: 0, marginTop: 10 }}>
-            <div style={{ textAlign: "right" }}>
-              <Text type="secondary" style={{ fontSize: 14 }}>
-                Hesabınız yok mu?{" "}
-              </Text>
-              <Link
-                onClick={goToRegister}
+              <div
                 style={{
-                  color: "#a37fc6",
-                  fontWeight: 600,
-                  fontSize: 14,
-                  marginLeft: 2,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  marginBottom: 10,
                 }}
-                aria-label="Kayıt Ol"
               >
-                Kayıt Ol
-              </Link>
-            </div>
-          </Form.Item>
-        </Form>
-      </Card>
+                <img
+                  src={lavLogo}
+                  alt="LAV Logo"
+                  style={{ width: 100, height: "auto", marginBottom: 0 }}
+                />
+                <Title
+                  level={3}
+                  style={{
+                    textAlign: "center",
+                    marginBottom: 12,
+                    marginTop: 0,
+                    fontWeight: 900,
+                    letterSpacing: "2px",
+                    color: "#7a34a9",
+                  }}
+                >
+                  Hata Paneli Girişi
+                </Title>
+              </div>
+              <Form
+                layout="vertical"
+                form={form}
+                onFinish={handleFinish}
+                initialValues={{ rememberMe: true }}
+                style={{ marginTop: 10 }}
+                autoComplete="on"
+              >
+                <Form.Item
+                  label={
+                    <span>
+                      E-posta{" "}
+                      <Tooltip title="Şirket e-posta adresinizi giriniz.">
+                        <InfoCircleOutlined style={{ color: "#a37fc6" }} />
+                      </Tooltip>
+                    </span>
+                  }
+                  name="email"
+                  rules={[
+                    { required: true, message: "E-posta gerekli!" },
+                    { type: "email", message: "Geçerli bir e-posta girin!" },
+                  ]}
+                >
+                  <Input
+                    prefix={<MailOutlined />}
+                    placeholder="ad.soyad@lav.com"
+                    size="large"
+                    autoFocus
+                    autoComplete="username"
+                    maxLength={64}
+                    aria-label="E-posta adresi"
+                  />
+                </Form.Item>
+                <Form.Item
+                  label={
+                    <span>
+                      Şifre{" "}
+                      <Tooltip title="Harf, rakam ve özel karakter içermelidir.">
+                        <InfoCircleOutlined style={{ color: "#a37fc6" }} />
+                      </Tooltip>
+                    </span>
+                  }
+                  name="password"
+                  rules={[{ required: true, message: "Şifre gerekli!" }]}
+                >
+                  <Input.Password
+                    ref={passwordInputRef}
+                    prefix={<LockOutlined />}
+                    placeholder="••••••••"
+                    size="large"
+                    autoComplete="current-password"
+                    aria-label="Şifre"
+                    maxLength={32}
+                    iconRender={(visible) =>
+                      visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />
+                    }
+                    className={shake ? "animate-shake" : ""}
+                    onPressEnter={() => form.submit()}
+                  />
+                </Form.Item>
+                <Form.Item style={{ marginBottom: 4 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <Form.Item name="rememberMe" valuePropName="checked" noStyle>
+                      <Checkbox>Beni hatırla</Checkbox>
+                    </Form.Item>
+                  </div>
+                </Form.Item>
+                <Form.Item style={{ marginBottom: 0 }}>
+                  <Button
+                    type="primary"
+                    htmlType="submit"
+                    loading={loading}
+                    size="large"
+                    style={{
+                      width: "100%",
+                      borderRadius: 12,
+                      fontWeight: 700,
+                      letterSpacing: 1,
+                      marginTop: 8,
+                      boxShadow: "0 3px 12px #a37fc622",
+                      background: "linear-gradient(90deg,#a37fc6 60%,#7a34a9 100%)",
+                      border: "none",
+                    }}
+                    aria-label="Giriş Yap"
+                  >
+                    {loading ? <LoadingOutlined /> : "Giriş Yap"}
+                  </Button>
+                </Form.Item>
+                <Form.Item style={{ marginBottom: 0, marginTop: 10 }}>
+                  <div style={{ textAlign: "right" }}>
+                    <Text type="secondary" style={{ fontSize: 14 }}>
+                      Hesabınız yok mu?{" "}
+                    </Text>
+                    <Link
+                      onClick={() => setShowRegister(true)}
+                      style={{
+                        color: "#a37fc6",
+                        fontWeight: 600,
+                        fontSize: 14,
+                        marginLeft: 2,
+                      }}
+                      aria-label="Kayıt Ol"
+                    >
+                      Kayıt Ol
+                    </Link>
+                  </div>
+                </Form.Item>
+              </Form>
+            </Card>
+          </div>
+          <div className="back">
+            {/* --- Register Card --- */}
+            <Register onBack={() => setShowRegister(false)} />
+          </div>
+        </div>
+      </div>
       <style>
         {`
         .animate-shake {
@@ -260,6 +287,27 @@ const Login: React.FC = () => {
           20%, 80% { transform: translateX(2px); }
           30%, 50%, 70% { transform: translateX(-4px); }
           40%, 60% { transform: translateX(4px); }
+        }
+        .login-fade-in {
+          animation: loginFadeIn 0.7s cubic-bezier(.36,.07,.19,.97);
+        }
+        @keyframes loginFadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(32px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        /* Hatalı input kenarı kırmızı */
+        .ant-form-item-has-error .ant-input,
+        .ant-form-item-has-error .ant-input-password {
+          border-color: #ff4d4f !important;
+          box-shadow: 0 0 0 2px #ff4d4f33 !important;
+          background: #fff0f0;
+          transition: border-color 0.3s, box-shadow 0.3s;
         }
         `}
       </style>

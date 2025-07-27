@@ -350,7 +350,7 @@ const Motors: React.FC = () => {
         title={
           <Row align="middle" gutter={16}>
             <Col>
-              <span style={{ fontSize: 30, fontWeight: 800, color: "#2a1b45" }}>Ekipmanlar / Motorlar</span>
+              <span style={{ fontSize: 30, fontWeight: 800, color: "#2a1b45" }}> Motorlar</span>
             </Col>
             <Col>
               <Tooltip title="Yenile">

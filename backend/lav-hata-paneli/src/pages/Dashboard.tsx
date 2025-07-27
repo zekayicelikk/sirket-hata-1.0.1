@@ -266,7 +266,7 @@ const Dashboard = () => {
             fontWeight: 900, color: "#1e5bbf",
             letterSpacing: 0.6, marginBottom: 8, textShadow: "0 1px 0 #fff"
           }}>
-            {moment().hour() < 12 ? "Günaydın" : moment().hour() < 18 ? "İyi Günler" : "İyi Akşamlar"}, {username || "Misafir"}!
+            {moment().hour() < 12 ? "Günaydın" : moment().hour() < 18 ? "İyi Günler" : "İyi Akşamlar"}, {username }!
           </Title>
           <Text style={{ fontSize: 16, color: "#656c8a", fontWeight: 500 }}>
             {clock}
@@ -467,7 +467,7 @@ const Dashboard = () => {
                 x: { display: true, grid: { display: false } },
                 y: { display: true, beginAtZero: true, grid: { color: "#e0e0e0" } }
               }
-            }} height={170} />
+            }}  />
           </Card>
           <Card
             title={<span><ThunderboltOutlined /> Motor Arıza Trend</span>}
@@ -483,7 +483,7 @@ const Dashboard = () => {
                 x: { display: true, grid: { display: false } },
                 y: { display: true, beginAtZero: true, grid: { color: "#e0e0e0" } }
               }
-            }} height={150} />
+            }}  />
           </Card>
         </Col>
       </Row>
@@ -493,7 +493,7 @@ const Dashboard = () => {
         textAlign: "center", margin: "36px 0 0 0",
         color: "#adb7ca", fontSize: 13, letterSpacing: 0.4
       }}>
-        © {new Date().getFullYear()} Kurumsal Motor/Arıza/Duruş Dashboard &nbsp;|&nbsp; {username || "Misafir"}
+        {new Date().getFullYear()} &nbsp;|&nbsp; {username }
       </div>
       {/* --- ZOOM MODAL --- */}
       <Modal
@@ -514,7 +514,7 @@ const Dashboard = () => {
               x: { display: true, grid: { display: false } },
               y: { display: true, beginAtZero: true, grid: { color: "#e0e0e0" } }
             }
-          }} height={410} />
+          }}  />
         ) : zoomChart === "lines" ? (
           <Bar data={linesBarData} options={{
             responsive: true,
@@ -524,7 +524,7 @@ const Dashboard = () => {
               x: { display: true, grid: { display: false } },
               y: { display: true, beginAtZero: true, grid: { color: "#e0e0e0" } }
             }
-          }} height={360} />
+          }}  />
         ) : null}
       </Modal>
     </div>

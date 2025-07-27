@@ -66,20 +66,31 @@ a:hover, .ant-btn:hover, .ant-card:hover {
 
 /* Header fix */
 .ant-layout-header {
-  z-index: 3 !important;
-  position: relative;
+  /* Koyu mor-pembe degrade, daha dolgun ve kurumsal */
+  background: linear-gradient(90deg, #de45a4 0%, #de45a4 100%) !important;
+  box-shadow: 0 2px 16px #ac47a470;
+  color: #fff !important;
+  min-height: 70px !important;
+  display: flex;
+  align-items: center;
+  font-family: 'Montserrat', 'Inter', 'Segoe UI', Arial, sans-serif;
+  font-weight: 700;
+  font-size: 1.24rem;
+  letter-spacing: 1.2px;
+  /* Hafif alt çizgi */
+  border-bottom: 2px solid #f4e2ff22;
 }
 
 /* Butonlar ve aktif öğeler */
 .ant-btn-primary, .ant-menu-item-selected, .ant-tag {
-  background: linear-gradient(90deg, #fe0094 60%, #a13b97 100%) !important;
+  background: linear-gradient(90deg, #d05498 60%, #d05498 10%) !important;
   border: none !important;
   color: #fff !important;
 }
 
 /* Link ve hover renkleri */
 a, .ant-btn-link {
-  color: #fe0094 !important;
+  color: #6d465d !important;
 }
 a:hover, .ant-btn-link:hover {
   color: #a13b97 !important;
@@ -89,7 +100,7 @@ h1, h2, h3, .ant-typography {
   font-family: 'Montserrat', 'Inter', 'Segoe UI', Arial, sans-serif !important;
   font-weight: 900 !important;
   letter-spacing: 1.2px;
-  color: #fe0094 !important;
+  color: #393a67 !important;
 }
 
 .card {
@@ -278,12 +289,12 @@ h1, h2, h3, .ant-typography {
   text-decoration: none;
 }
 .ant-breadcrumb-link a:hover {
-  color: #a13b97 !important;
+  color: #eae4e9 !important;
 }
 
 /* Breadcrumb son (aktif) */
 .ant-breadcrumb .ant-breadcrumb-link:last-child,
 .ant-breadcrumb .ant-breadcrumb-link:last-child span {
-  color: #2b154b !important;
+  color: #f0edf5 !important;
   font-weight: 900;
 }

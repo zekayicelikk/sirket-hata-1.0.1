@@ -235,14 +235,8 @@ const FaultDowntimeDashboard: React.FC = () => {
 
   return (
     <div style={{ maxWidth: 1220, margin: "0 auto", padding: "36px 0 0 0" }}>
-      <div style={{ marginBottom: 6 }}>
-        <Title level={1} style={{
-          color: "#21043d", fontWeight: 900, fontSize: 38, marginBottom: 0, letterSpacing: 0.5,
-        }}>Duruşlar</Title>
-        <hr style={{
-          border: "none", borderTop: "2px solid #ede7f6", margin: "8px 0 30px 0"
-        }} />
-      </div>
+      
+      
       {/* ----------- GÜNLÜK/HAFTALIK ANALİZ KUTULARI ----------- */}
       <Row gutter={22} style={{ marginBottom: 4, flexWrap: "wrap" }}>
         <Col xs={24} sm={12} md={7}>
