@@ -10,8 +10,9 @@ import recordRouter from "./records";
 import userRouter from "./users";
 import announcementRouter from "./announcement";
 import generalFaultRouter from "./generalFault";
-import productionLineRouter from "./productionLine"; // HAT YÖNETİMİ
-
+import productionLineRouter from "./productionLine"; 
+import controlDeviceRouter from "./controlDevice";
+import actionLogRouter from "./actionLog";
 dotenv.config();
 
 const app = express();
@@ -27,8 +28,9 @@ app.use("/api/records", recordRouter);
 app.use("/api/users", userRouter);
 app.use("/api/announcements", announcementRouter);
 app.use("/api/general-faults", generalFaultRouter);
+app.use("/api/control-devices", controlDeviceRouter);
 app.use("/api/production-lines", productionLineRouter); // HAT CRUD/LIST
-
+app.use("/api/action-logs", actionLogRouter);
 // Basit sağlık kontrol endpoint'i
 app.get("/health", (req, res) => {
   res.json({ status: "ok", app: "sirket-hata-2" });

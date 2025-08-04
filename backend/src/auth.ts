@@ -22,6 +22,15 @@ router.post("/register", async (req, res) => {
     data: { email, password: hashed, role: role || "user" },
   });
 
+  // Action log: kayıt işlemi
+  await prisma.actionLog.create({
+    data: {
+      userId: user.id,
+      actionType: "register",
+      description: "Yeni kullanıcı kaydı yapıldı",
+    },
+  });
+
   res.json({ id: user.id, email: user.email, role: user.role });
 });
 
@@ -40,8 +49,18 @@ router.post("/login", async (req, res) => {
     expiresIn: "7d",
   });
 
+  // Action log: giriş işlemi
+  await prisma.actionLog.create({
+    data: {
+      userId: user.id,
+      actionType: "login",
+      description: "Kullanıcı giriş yaptı",
+    },
+  });
+
   res.json({ token, user: { id: user.id, email: user.email, role: user.role } });
 });
+
 // Şifre değiştirme endpoint'i
 router.post("/change-password", authenticateToken, async (req: any, res) => {
   const userId = req.user.id;
@@ -66,6 +85,15 @@ router.post("/change-password", authenticateToken, async (req: any, res) => {
   await prisma.user.update({
     where: { id: userId },
     data: { password: hashed }
+  });
+
+  // Action log: şifre değişikliği
+  await prisma.actionLog.create({
+    data: {
+      userId,
+      actionType: "change_password",
+      description: "Kullanıcı şifresini değiştirdi",
+    },
   });
 
   res.json({ success: true, message: "Şifre başarıyla değiştirildi." });

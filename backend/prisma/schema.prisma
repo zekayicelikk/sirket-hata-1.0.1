@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -26,14 +26,33 @@ model User {
 
 // === MOTOR TABLOSU ===
 model Motor {
-  id          Int      @id @default(autoincrement())
-  serial      String   @unique
-  name        String
-  description String?
-  status      String?
-  location    String?
-  records     Record[]
-  createdAt   DateTime @default(now())
+  id             Int       @id @default(autoincrement())
+  serial         String    @unique
+  tag            String?
+  name           String
+  type           String?
+  description    String?
+  status         String?
+  location       String?
+  powerKW        Float?
+  voltage        Float?
+  current        Float?
+  phase          Int?
+  manufacturer   String?
+  modelNo        String?
+  year           Int?
+  rpm            Int?
+  protection     String?
+  connectionType String?
+  lastService    DateTime?
+  nextService    DateTime?
+  isActive       Boolean?  @default(true)
+  qrCode         String?
+  imageUrl       String?
+  notes          String?
+  createdAt      DateTime  @default(now())
+  records        Record[] // SADECE BU!
+  controlDevices ControlDevice[]
 }
 
 // === ARIZA TİPİ ===
@@ -47,14 +66,14 @@ model FaultType {
 // === MOTOR ARIZA GEÇMİŞİ ===
 model Record {
   id          Int       @id @default(autoincrement())
-  user        User      @relation(fields: [userId], references: [id])
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId      Int
-  motor       Motor     @relation(fields: [motorId], references: [id])
+  motor       Motor     @relation(fields: [motorId], references: [id], onDelete: Cascade) // <-- onDelete burada!
   motorId     Int
   faultType   FaultType @relation(fields: [faultTypeId], references: [id])
   faultTypeId Int
   desc        String
-  duration    Int?      // Arıza süresi (dakika)
+  duration    Int?
   date        DateTime  @default(now())
   productionImpact Boolean?
   line        String?
@@ -67,7 +86,7 @@ model Record {
 // === HAT (LINE) TABLOSU ===
 model Line {
   id     Int                @id @default(autoincrement())
-  code   String             @unique // "A1", "A2", ... "A7", "A95"
+  code   String             @unique
   name   String?
   faults GeneralFaultLines[]
 }
@@ -81,12 +100,12 @@ model GeneralFault {
   date             DateTime             @default(now())
   user             User                 @relation(fields: [userId], references: [id])
   userId           Int
-  lines            GeneralFaultLines[]  // Çoklu hat ilişkisi
+  lines            GeneralFaultLines[]
   files            File[]
   actionLogs       ActionLog[]
   createdAt        DateTime             @default(now())
-  status           String               @default("open") // "open" | "closed"
-  closedAt         DateTime?            // Kapanış zamanı
+  status           String               @default("open")
+  closedAt         DateTime?
 }
 
 // === ARIZA-HAT PIVOTU ===
@@ -94,7 +113,7 @@ model GeneralFaultLines {
   id             Int          @id @default(autoincrement())
   generalFault   GeneralFault @relation(fields: [generalFaultId], references: [id], onDelete: Cascade)
   generalFaultId Int
-  line           Line         @relation(fields: [lineId], references: [id])
+  line           Line         @relation(fields: [lineId], references: [id], onDelete: Cascade)
   lineId         Int
   downtimeMin    Int?         
 }
@@ -129,4 +148,34 @@ model Announcement {
   date        DateTime @default(now())
   createdBy   User?    @relation("UserAnnouncements", fields: [createdById], references: [id])
   createdById Int?
+}
+// === MOTOR KONTROL CİHAZI (SÜRÜCÜ, SOFT STARTER, VFD) ===
+model ControlDevice {
+  id              Int      @id @default(autoincrement())
+  type            String   // "VFD", "Soft Starter" vs.
+  serial          String   @unique
+  brand           String
+  model           String
+  powerKW         Float
+  voltage         Float
+  status          String   // "Aktif" | "Yedek" | "Bakımda" | "Arızalı" | "Durduruldu"
+  isSpare         Boolean  @default(false)
+  activeMotorId   Int?     
+  motor           Motor?   @relation(fields: [activeMotorId], references: [id])
+  spareForMotors  String?  // (JSON array string, opsiyonel)
+  location        String
+  protection      String?
+  commProtocol    String?
+  controlType     String?
+  firmware        String?
+  rampUpTime      Int?
+  rampDownTime    Int?
+  bypassContact   Boolean?
+  year            Int?
+  lastService     DateTime?
+  nextService     DateTime?
+  notes           String?
+  imageUrl        String?
+  qrCode          String?
+  createdAt       DateTime @default(now())
 }

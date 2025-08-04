@@ -2,12 +2,17 @@
   "name": "lav-hata-paneli",
   "private": true,
   "version": "0.0.0",
+  "main": "main.cjs",
+  "description": "LAV Hata Paneli masaüstü uygulaması",
+  "author": "Zekayi Çelik",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "electron": "electron .",
+    "electron:build": "electron-builder"
   },
   "dependencies": {
     "@ant-design/charts": "^2.6.0",
@@ -29,6 +34,8 @@
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",
+    "electron": "^37.2.4",
+    "electron-builder": "^26.0.12",
     "eslint": "^9.30.1",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
@@ -36,5 +43,23 @@
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.35.1",
     "vite": "^7.0.4"
+  },
+  "build": {
+    "appId": "com.lav.hatapanelli",
+    "productName": "LAV Hata Paneli",
+    "directories": {
+      "buildResources": "assets",
+      "output": "dist_electron"
+    },
+    "files": [
+      "dist/**",
+      "main.cjs",
+      "lav.db"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    }
   }
 }

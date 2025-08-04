@@ -31,9 +31,26 @@ interface Motor {
   name: string;
   description?: string;
   createdAt?: string;
-  status?: "Aktif" | "Pasif" | "Servis Dışı";
+  status?: string;
   location?: string;
+  powerKW?: number;
+  voltage?: string;
+  current?: number;
+  phase?: number;
+  manufacturer?: string;
+  modelNo?: string;
+  year?: number;
+  rpm?: number;
+  protection?: string;
+  connectionType?: string;
+  lastService?: string;
+  nextService?: string;
+  isActive?: boolean;
+  qrCode?: string;
+  imageUrl?: string;
+  notes?: string;
 }
+
 interface FaultType {
   id: number;
   name: string;
@@ -48,7 +65,50 @@ interface Fault {
 }
 
 const getDateString = (date?: string | null) =>
-  date ? new Date(date).toLocaleString() : "-";
+  date ? new Date(date).toLocaleString("tr-TR") : "-";
+
+// ---- SAĞLIK SKORU FONKSİYONU ----
+function calculateHealthScore({
+  totalFaults,
+  lastFaultDate,
+  nextService,
+  isActive,
+  lastService
+}: {
+  totalFaults: number,
+  lastFaultDate: string | null,
+  nextService: string | null,
+  isActive: boolean | undefined,
+  lastService: string | null
+}) {
+  let score = 100;
+  // Fazla arıza
+  if (totalFaults >= 5) score -= 25;
+  else if (totalFaults >= 3) score -= 10;
+  else if (totalFaults >= 1) score -= 5;
+  // Son arıza yakınsa
+  if (lastFaultDate) {
+    const diffDays = (Date.now() - new Date(lastFaultDate).getTime()) / (1000 * 60 * 60 * 24);
+    if (diffDays < 7) score -= 25;
+    else if (diffDays < 30) score -= 10;
+  }
+  // Planlı bakım tarihi geçtiyse
+  if (nextService && new Date(nextService).getTime() < Date.now()) score -= 25;
+  // Motor pasifse
+  if (isActive === false) score -= 30;
+  // Son bakım eskiyse
+  if (lastService) {
+    const diffYear = (Date.now() - new Date(lastService).getTime()) / (1000 * 60 * 60 * 24 * 365.25);
+    if (diffYear > 2) score -= 15;
+  }
+  // Skor min 0 max 100
+  score = Math.max(0, Math.min(100, score));
+  let level: "good" | "warning" | "bad";
+  if (score >= 85) level = "good";
+  else if (score >= 60) level = "warning";
+  else level = "bad";
+  return { score, level };
+}
 
 const MotorDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -141,6 +201,17 @@ const MotorDetail: React.FC = () => {
   useEffect(() => {
     setFilteredFaults(filterType != null ? faults.filter(f => f.faultType?.id === filterType) : faults);
   }, [filterType, faults]);
+
+  // Sağlık skoru
+  const health = useMemo(() => {
+    return calculateHealthScore({
+      totalFaults: faults.length,
+      lastFaultDate: faults.length > 0 ? faults[faults.length - 1].date : null,
+      nextService: (motor as any)?.nextService || null,
+      isActive: typeof (motor as any)?.isActive === "boolean" ? (motor as any)?.isActive : true,
+      lastService: (motor as any)?.lastService || null,
+    });
+  }, [motor, faults]);
 
   // --- ANALİZLER ---
   const mtbf = useMemo(() => {
@@ -303,25 +374,86 @@ const MotorDetail: React.FC = () => {
   ];
 
   // --- EXPORTLAR ---
+  // --- GELİŞMİŞ CSV EXPORT ---
   const handleExportCSV = () => {
-    const header = ["ID", "Tip", "Açıklama", "Süre", "Kullanıcı", "Tarih"];
+    // UTF-8 BOM ve açıklamalı başlıklar
+    const header = [
+      "ID",
+      "Arıza Tipi",
+      "Açıklama",
+      "Süre (dk)",
+      "Kullanıcı",
+      "Tarih",
+      "Motor İsmi",
+      "Seri No",
+      "Durum",
+      "Lokasyon",
+      "Güç (kW)",
+      "Gerilim (V)",
+      "Akım (A)",
+      "Faz",
+      "Üretici",
+      "Model No",
+      "Yıl",
+      "RPM",
+      "Koruma",
+      "Bağlantı Tipi",
+      "Son Bakım",
+      "Planlı Bakım",
+      "Sağlık Skoru (%)"
+    ];
     const rows = filteredFaults.map((f) => [
       f.id,
       f.faultType?.name || "-",
       f.desc,
-      f.duration != null && f.duration !== "" ? `${f.duration} dk` : "-",
+      f.duration != null && f.duration !== "" ? `${f.duration}` : "-",
       f.user?.email || "-",
       getDateString(f.date),
+      motor?.name || "-",
+      motor?.serial || "-",
+      motor?.status || "-",
+      (motor as any)?.location || "-",
+      (motor as any)?.powerKW || "-",
+      (motor as any)?.voltage || "-",
+      (motor as any)?.current || "-",
+      (motor as any)?.phase || "-",
+      (motor as any)?.manufacturer || "-",
+      (motor as any)?.modelNo || "-",
+      (motor as any)?.year || "-",
+      (motor as any)?.rpm || "-",
+      (motor as any)?.protection || "-",
+      (motor as any)?.connectionType || "-",
+      (motor as any)?.lastService ? getDateString((motor as any)?.lastService) : "-",
+      (motor as any)?.nextService ? getDateString((motor as any)?.nextService) : "-",
+      health?.score ?? "-"
     ]);
-    const csvContent = [header, ...rows].map((r) => r.join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
-    saveAs(blob, `motor_${motor?.name}_arizalar.csv`);
+    // UTF-8 BOM ekle, Excel/Türkçe bozulmaz
+    const csvContent =
+      "\uFEFF" +
+      [header, ...rows]
+        .map((r) =>
+          r
+            .map((c) =>
+              typeof c === "string"
+                ? `"${c.replace(/"/g, '""')}"`
+                : c == null
+                ? ""
+                : c
+            )
+            .join(";")
+        )
+        .join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    saveAs(blob, `motor_${motor?.name || "bilgi"}_arizalar.csv`);
   };
+
+  // PDF/PRINT aynı kalabilir
+
   const handleExportPDF = () => {
     const doc = new jsPDF();
     doc.text(`Motor: ${motor?.name} - Arıza Geçmişi`, 14, 16);
     (doc as any).autoTable({
-      head: [["ID", "Tip", "Açıklama", "Süre", "Kullanıcı", "Tarih"]],
+      head: [["ID", "Tip", "Açıklama", "Süre", "Kullanıcı", "Tarih", "Sağlık Skoru"]],
       body: filteredFaults.map((f) => [
         f.id,
         f.faultType?.name || "-",
@@ -329,11 +461,13 @@ const MotorDetail: React.FC = () => {
         f.duration != null && f.duration !== "" ? `${f.duration} dk` : "-",
         f.user?.email || "-",
         getDateString(f.date),
+        health?.score ?? "-"
       ]),
       startY: 24,
     });
     doc.save(`motor_${motor?.name}_arizalar.pdf`);
   };
+
   const handlePrint = () => window.print();
 
   const handleEdit = async () => {
@@ -382,6 +516,65 @@ const MotorDetail: React.FC = () => {
                 <Tag color="blue" icon={<EnvironmentOutlined />}>{motor.location}</Tag>
               </>
             )}
+            {/* SAĞLIK DURUMU SKORU ve BAR */}
+            <div style={{ margin: "22px 0 8px 0" }}>
+              <Text strong>Sağlık Durumu: </Text>
+              <Tag
+                color={
+                  health.level === "good"
+                    ? "green"
+                    : health.level === "warning"
+                    ? "gold"
+                    : "red"
+                }
+                style={{
+                  fontWeight: 700,
+                  fontSize: 18,
+                  padding: "5px 18px",
+                  borderRadius: 16,
+                  background:
+                    health.level === "good"
+                      ? "linear-gradient(90deg,#6ee7b7 60%,#10b981 100%)"
+                      : health.level === "warning"
+                      ? "linear-gradient(90deg,#fcd34d 60%,#f59e42 100%)"
+                      : "linear-gradient(90deg,#feb2b2 60%,#f43f5e 100%)"
+                }}
+              >
+                %{health.score} {health.level === "good"
+                  ? "Sağlam"
+                  : health.level === "warning"
+                  ? "Dikkat"
+                  : "Kritik"}
+              </Tag>
+              <div style={{ margin: "8px 0 16px 0" }}>
+                <div style={{
+                  background: "#eee",
+                  borderRadius: 8,
+                  height: 18,
+                  width: "100%",
+                  marginBottom: 4,
+                  overflow: "hidden",
+                }}>
+                  <div
+                    style={{
+                      width: `${health.score}%`,
+                      height: "100%",
+                      background:
+                        health.level === "good"
+                          ? "linear-gradient(90deg,#34d399,#10b981)"
+                          : health.level === "warning"
+                          ? "linear-gradient(90deg,#fde68a,#fbbf24)"
+                          : "linear-gradient(90deg,#fca5a5,#ef4444)",
+                      transition: "width 0.5s"
+                    }}
+                  />
+                </div>
+                <Text type="secondary" style={{ fontSize: 13 }}>
+                  Son arıza, toplam arıza, bakım gecikmesi, aktiflik ve son bakım yılı dikkate alınır.
+                </Text>
+              </div>
+            </div>
+            {/* / SAĞLIK DURUMU */}
             <div style={{ marginTop: 24 }}>
               <Button
                 type="primary"
@@ -405,7 +598,6 @@ const MotorDetail: React.FC = () => {
               <Col span={12}><Statistic title="Toplam Arıza" value={faults.length} valueStyle={{ color: "#ff4d4f" }} /></Col>
               <Col span={12} style={{ marginTop: 22 }}><Statistic title="En Sık Tip" value={topFaults[0]?.[0] || "-"} valueStyle={{ color: "#2f54eb" }} /></Col>
               <Col span={12} style={{ marginTop: 22 }}><Statistic title="Toplam Süre" value={totalDuration + " dk"} valueStyle={{ color: "#b37feb" }} /></Col>
-              {/* --------------- BURASI DÜZELTİLDİ --------------- */}
               <Col span={12} style={{ marginTop: 22 }}>
                 <Statistic
                   title="Ortalama Süre"
@@ -418,7 +610,6 @@ const MotorDetail: React.FC = () => {
                   }
                 />
               </Col>
-              {/* ------------------------------------------------ */}
               <Col span={12} style={{ marginTop: 22 }}><Statistic title="MTBF" value={mtbf} valueStyle={{ color: "#ad7fff" }} suffix={<Tooltip title="Arıza arası ortalama saat"><BarChartOutlined /></Tooltip>} /></Col>
               <Col span={12} style={{ marginTop: 22 }}><Statistic title="Son Bakım" value={getDateString(lastMaintenance)} valueStyle={{ color: "#13c2c2" }} /></Col>
             </Row>

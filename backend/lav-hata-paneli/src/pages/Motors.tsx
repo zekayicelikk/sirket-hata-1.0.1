@@ -26,6 +26,8 @@ import {
   SearchOutlined,
   RightOutlined,
   ReloadOutlined,
+  ExclamationCircleTwoTone,
+  WarningTwoTone,
 } from "@ant-design/icons";
 import { Link, useNavigate } from "react-router-dom";
 import { saveAs } from "file-saver";
@@ -35,9 +37,26 @@ interface Motor {
   id: number;
   name: string;
   serial: string;
+  tag?: string;
+  description?: string;
   status: string;
   location: string;
-  description?: string;
+  powerKW?: number;
+  voltage?: string;
+  current?: number;
+  phase?: number;
+  manufacturer?: string;
+  modelNo?: string;
+  year?: number;
+  rpm?: number;
+  protection?: string;
+  connectionType?: string;
+  lastService?: string;
+  nextService?: string;
+  isActive?: boolean;
+  qrCode?: string;
+  imageUrl?: string;
+  notes?: string;
   createdAt: string;
 }
 
@@ -47,17 +66,47 @@ const STATUS_OPTIONS = [
   { value: "Bakımda", color: "orange" },
   { value: "Durduruldu", color: "volcano" },
   { value: "Hazır", color: "blue" },
+  { value: "Yedek", color: "geekblue" }, // <-- Yedek statüsü eklendi
 ];
 
 const initialForm = {
   name: "",
   serial: "",
+  tag: "",
   status: "Çalışıyor",
   location: "",
   description: "",
+  powerKW: undefined,
+  voltage: "",
+  current: undefined,
+  phase: undefined,
+  manufacturer: "",
+  modelNo: "",
+  year: undefined,
+  rpm: undefined,
+  protection: "",
+  connectionType: "",
+  lastService: undefined,
+  nextService: undefined,
+  isActive: true,
+  qrCode: "",
+  imageUrl: "",
+  notes: "",
 };
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
+const getMaintenanceStatus = (nextService: string | undefined) => {
+  if (!nextService) return null;
+  const next = new Date(nextService);
+  const today = new Date();
+  const diff = Math.ceil(
+    (next.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+  );
+  if (diff < 0) return "expired"; // Bakım geçmiş
+  if (diff <= 7) return "upcoming"; // 7 gün veya daha az kaldı
+  return null;
+};
 
 const Motors: React.FC = () => {
   const [motors, setMotors] = useState<Motor[]>([]);
@@ -70,7 +119,7 @@ const Motors: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
   const navigate = useNavigate();
 
-  // Kullanıcı rolü (gözlemci, teknisyen, admin)
+  // Kullanıcı rolü
   const userInfo = React.useMemo(() => {
     try {
       return JSON.parse(localStorage.getItem("userInfo") || "{}");
@@ -193,18 +242,50 @@ const Motors: React.FC = () => {
     const header = [
       "Seri No",
       "Motor İsmi",
+      "Etiket",
       "Durum",
       "Lokasyon",
-      "Açıklama",
+      "Güç (kW)",
+      "Gerilim (V)",
+      "Akım (A)",
+      "Faz",
+      "Üretici",
+      "Model No",
+      "Yıl",
+      "RPM",
+      "Koruma",
+      "Bağlantı Tipi",
+      "Son Bakım",
+      "Planlı Bakım",
+      "QR Kodu",
+      "Resim",
+      "Notlar",
       "Eklenme Tarihi",
+      "Açıklama",
     ];
     const rows = filtered.map((m) => [
       m.serial,
       m.name,
+      m.tag,
       m.status,
       m.location,
-      m.description || "-",
+      m.powerKW,
+      m.voltage,
+      m.current,
+      m.phase,
+      m.manufacturer,
+      m.modelNo,
+      m.year,
+      m.rpm,
+      m.protection,
+      m.connectionType,
+      m.lastService,
+      m.nextService,
+      m.qrCode,
+      m.imageUrl,
+      m.notes,
       new Date(m.createdAt).toLocaleString("tr-TR"),
+      m.description || "-",
     ]);
     const csv =
       "\uFEFF" +
@@ -240,6 +321,12 @@ const Motors: React.FC = () => {
       sorter: (a, b) => a.name.localeCompare(b.name, "tr"),
     },
     {
+      title: "Etiket",
+      dataIndex: "tag",
+      key: "tag",
+      render: (tag: string) => tag || <Tag color="gray">-</Tag>,
+    },
+    {
       title: "Durum",
       dataIndex: "status",
       key: "status",
@@ -262,13 +349,53 @@ const Motors: React.FC = () => {
       sorter: (a, b) => (a.location || "").localeCompare(b.location || "", "tr"),
     },
     {
-      title: "Açıklama",
-      dataIndex: "description",
-      key: "description",
-      ellipsis: true,
-      render: (desc: string) => (
-        <Tooltip title={desc}>{desc ? desc.substring(0, 40) : "-"}</Tooltip>
-      ),
+      title: "Güç (kW)",
+      dataIndex: "powerKW",
+      key: "powerKW",
+      render: (val: number) => val !== undefined ? val : <Tag color="gray">-</Tag>,
+    },
+    {
+      title: "Gerilim (V)",
+      dataIndex: "voltage",
+      key: "voltage",
+      render: (val: string) => val || <Tag color="gray">-</Tag>,
+    },
+    {
+      title: "Akım (A)",
+      dataIndex: "current",
+      key: "current",
+      render: (val: number) => val !== undefined ? val : <Tag color="gray">-</Tag>,
+    },
+    {
+      title: "Faz",
+      dataIndex: "phase",
+      key: "phase",
+      render: (val: number) => val !== undefined ? val : <Tag color="gray">-</Tag>,
+    },
+    {
+      title: "Planlı Bakım",
+      dataIndex: "nextService",
+      key: "nextService",
+      render: (nextService: string | undefined) => {
+        const status = getMaintenanceStatus(nextService);
+        return (
+          <>
+            {nextService
+              ? new Date(nextService).toLocaleDateString("tr-TR")
+              : <Tag color="gray">-</Tag>}
+            {status === "expired" && (
+              <Tag color="red" style={{ marginLeft: 4 }}>
+                <ExclamationCircleTwoTone twoToneColor="#f5222d" /> Bakım Geçti
+              </Tag>
+            )}
+            {status === "upcoming" && (
+              <Tag color="orange" style={{ marginLeft: 4 }}>
+                <WarningTwoTone twoToneColor="#faad14" /> Bakım Yaklaşıyor
+              </Tag>
+            )}
+          </>
+        );
+      }
     },
     {
       title: "Eklenme Tarihi",
@@ -328,7 +455,6 @@ const Motors: React.FC = () => {
   // Satır tıklanınca detay sayfasına git!
   const onRow = (motor: Motor) => ({
     onClick: (event: React.MouseEvent) => {
-      // Eğer tıklanan eleman bir <a> veya <button> değilse satırdan git!
       if (
         !(event.target as HTMLElement).closest("a") &&
         !(event.target as HTMLElement).closest("button")
@@ -339,10 +465,20 @@ const Motors: React.FC = () => {
     style: { cursor: "pointer" }
   });
 
+  // İstatistik kutuları
   const total = motors.length;
   const active = motors.filter((m) => m.status === "Çalışıyor").length;
   const faulty = motors.filter((m) => m.status === "Arızalı").length;
   const maintenance = motors.filter((m) => m.status === "Bakımda").length;
+  const standby = motors.filter((m) => m.status === "Yedek").length;
+
+  // Bakım yaklaşıyor/geçti istatistikleri
+  const expiredMaintenance = motors.filter(
+    (m) => getMaintenanceStatus(m.nextService) === "expired"
+  ).length;
+  const upcomingMaintenance = motors.filter(
+    (m) => getMaintenanceStatus(m.nextService) === "upcoming"
+  ).length;
 
   return (
     <div style={{ maxWidth: 1400, margin: "0 auto", padding: "32px 0" }}>
@@ -410,17 +546,38 @@ const Motors: React.FC = () => {
         bodyStyle={{ padding: "28px 12px" }}
       >
         <Row gutter={20} style={{ marginBottom: 24 }}>
-          <Col md={6} xs={12}>
+          <Col md={4} xs={12}>
             <Statistic title="Toplam Motor" value={total} />
           </Col>
-          <Col md={6} xs={12}>
+          <Col md={4} xs={12}>
             <Statistic title="Çalışan" value={active} valueStyle={{ color: "#52c41a" }} />
           </Col>
-          <Col md={6} xs={12}>
+          <Col md={4} xs={12}>
             <Statistic title="Bakımda" value={maintenance} valueStyle={{ color: "#faad14" }} />
           </Col>
-          <Col md={6} xs={12}>
+          <Col md={4} xs={12}>
             <Statistic title="Arızalı" value={faulty} valueStyle={{ color: "#ff4d4f" }} />
+          </Col>
+          <Col md={4} xs={12}>
+            <Statistic title="Yedek" value={standby} valueStyle={{ color: "#3a86ff" }} />
+          </Col>
+        </Row>
+        <Row gutter={16} style={{ marginBottom: 16 }}>
+          <Col md={6} xs={12}>
+            <Statistic
+              title="Bakımı Geçen"
+              value={expiredMaintenance}
+              prefix={<ExclamationCircleTwoTone twoToneColor="#f5222d" />}
+              valueStyle={{ color: "#f5222d" }}
+            />
+          </Col>
+          <Col md={6} xs={12}>
+            <Statistic
+              title="Bakımı Yaklaşan"
+              value={upcomingMaintenance}
+              prefix={<WarningTwoTone twoToneColor="#faad14" />}
+              valueStyle={{ color: "#faad14" }}
+            />
           </Col>
         </Row>
         {loading ? (
@@ -464,42 +621,78 @@ const Motors: React.FC = () => {
           initialValues={initialForm}
           autoComplete="off"
         >
-          <Form.Item
-            label="Motor İsmi"
-            name="name"
-            rules={[{ required: true, message: "Motor ismi zorunlu!" }]}
-          >
+          <Form.Item label="Motor İsmi" name="name" rules={[{ required: true, message: "Motor ismi zorunlu!" }]}>
             <Input placeholder="Ör: Pompa A" maxLength={40} disabled={userRole === "gözlemci"} />
           </Form.Item>
-          <Form.Item
-            label="Seri Numarası"
-            name="serial"
-            rules={[
-              { required: true, message: "Seri numarası zorunlu!" },
-              { min: 2, message: "En az 2 karakter olmalı!" },
-            ]}
-          >
+          <Form.Item label="Seri Numarası" name="serial" rules={[
+            { required: true, message: "Seri numarası zorunlu!" },
+            { min: 2, message: "En az 2 karakter olmalı!" },
+          ]}>
             <Input placeholder="Ör: 45210023" maxLength={30} disabled={userRole === "gözlemci"} />
           </Form.Item>
-          <Form.Item
-            label="Durum"
-            name="status"
-            rules={[{ required: true, message: "Durum seçilmeli!" }]}
-          >
+          <Form.Item label="Etiket (TAG)" name="tag">
+            <Input placeholder="Ör: SAP/CMMS kodu" maxLength={30} disabled={userRole === "gözlemci"} />
+          </Form.Item>
+          <Form.Item label="Durum" name="status" rules={[{ required: true, message: "Durum seçilmeli!" }]}>
             <Select disabled={userRole === "gözlemci"}>
               {STATUS_OPTIONS.map((s) => (
-                <Select.Option key={s.value} value={s.value}>
-                  {s.value}
-                </Select.Option>
+                <Select.Option key={s.value} value={s.value}>{s.value}</Select.Option>
               ))}
             </Select>
           </Form.Item>
-          <Form.Item
-            label="Lokasyon"
-            name="location"
-            rules={[{ required: true, message: "Lokasyon zorunlu!" }]}
-          >
+          <Form.Item label="Lokasyon" name="location" rules={[{ required: true, message: "Lokasyon zorunlu!" }]}>
             <Input placeholder="Ör: Kazan Dairesi" maxLength={40} disabled={userRole === "gözlemci"} />
+          </Form.Item>
+          <Form.Item label="Güç (kW)" name="powerKW">
+            <Input type="number" step="0.01" placeholder="Ör: 5.5" disabled={userRole === "gözlemci"} />
+          </Form.Item>
+          <Form.Item label="Gerilim (V)" name="voltage">
+            <Input placeholder="Ör: 380V" maxLength={12} disabled={userRole === "gözlemci"} />
+          </Form.Item>
+          <Form.Item label="Akım (A)" name="current">
+            <Input type="number" step="0.1" placeholder="Ör: 12.3" disabled={userRole === "gözlemci"} />
+          </Form.Item>
+          <Form.Item label="Faz" name="phase">
+            <Input type="number" min={1} max={3} placeholder="Ör: 3" disabled={userRole === "gözlemci"} />
+          </Form.Item>
+          <Form.Item label="Üretici" name="manufacturer">
+            <Input placeholder="Ör: Siemens" maxLength={24} disabled={userRole === "gözlemci"} />
+          </Form.Item>
+          <Form.Item label="Model No" name="modelNo">
+            <Input placeholder="Ör: 1LE1002-1AA23" maxLength={32} disabled={userRole === "gözlemci"} />
+          </Form.Item>
+          <Form.Item label="Yıl" name="year">
+            <Input type="number" placeholder="Ör: 2024" min={1960} max={2100} disabled={userRole === "gözlemci"} />
+          </Form.Item>
+          <Form.Item label="RPM" name="rpm">
+            <Input type="number" placeholder="Ör: 1450" disabled={userRole === "gözlemci"} />
+          </Form.Item>
+          <Form.Item label="Koruma" name="protection">
+            <Input placeholder="Ör: IP55" maxLength={12} disabled={userRole === "gözlemci"} />
+          </Form.Item>
+          <Form.Item label="Bağlantı Tipi" name="connectionType">
+            <Input placeholder="Ör: Yıldız-Üçgen" maxLength={32} disabled={userRole === "gözlemci"} />
+          </Form.Item>
+          <Form.Item label="Son Bakım" name="lastService">
+            <Input type="date" disabled={userRole === "gözlemci"} />
+          </Form.Item>
+          <Form.Item label="Planlı Bakım" name="nextService">
+            <Input type="date" disabled={userRole === "gözlemci"} />
+          </Form.Item>
+          <Form.Item label="QR Kodu" name="qrCode">
+            <Input placeholder="URL veya kod" disabled={userRole === "gözlemci"} />
+          </Form.Item>
+          <Form.Item label="Resim URL" name="imageUrl">
+            <Input placeholder="https://site.com/motor.png" disabled={userRole === "gözlemci"} />
+          </Form.Item>
+          <Form.Item label="Notlar" name="notes">
+            <Input.TextArea maxLength={200} rows={2} placeholder="Ek notlar" disabled={userRole === "gözlemci"} />
+          </Form.Item>
+          <Form.Item label="Aktif mi?" name="isActive" valuePropName="checked">
+            <Select disabled={userRole === "gözlemci"}>
+              <Select.Option value={true}>Evet</Select.Option>
+              <Select.Option value={false}>Hayır</Select.Option>
+            </Select>
           </Form.Item>
           <Form.Item label="Açıklama" name="description">
             <Input.TextArea placeholder="Ek açıklama" maxLength={120} rows={2} disabled={userRole === "gözlemci"} />

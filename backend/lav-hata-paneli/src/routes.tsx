@@ -6,13 +6,16 @@ import Equipment from "./pages/Equipment";
 import Motors from "./pages/Motors";
 import MotorDetail from "./pages/MotorDetail";
 import GeneralFaultsBook from "./pages/GeneralFaultsBook";
-import FaultDowntimeDashboard from "./pages/FaultDowntimeDashboard";  // <-- YENİ
+import FaultDowntimeDashboard from "./pages/FaultDowntimeDashboard";
 import Users from "./pages/Users";
 import Profile from "./pages/Profile";
 import AdminPanel from "./pages/AdminPanel";
 import AppLayout from "./components/AppLayout";
 
-// Korumalı alanlar için bir component
+// === EKLEDİKLERİNİ BURAYA İMPORT ET ===
+import ControlDevices from "./pages/ControlDevices";
+import ControlDeviceDetail from "./pages/ControlDeviceDetail";
+
 const ProtectedRoutes = () => (
   <AppLayout>
     <Outlet />
@@ -34,8 +37,12 @@ const AppRoutes = () => {
           <Route path="equipment" element={<Equipment />} />
           <Route path="equipment/motors" element={<Motors />} />
           <Route path="equipment/motors/:id" element={<MotorDetail />} />
+          {/* ----------- YENİ SÜRÜCÜ/CONTROL DEVICE ROUTE'LARI ----------- */}
+          <Route path="equipment/control-devices" element={<ControlDevices />} />
+          <Route path="equipment/control-devices/:id" element={<ControlDeviceDetail />} />
+          {/* ---------------------------------------------------------- */}
           <Route path="general-faults" element={<GeneralFaultsBook />} />
-          <Route path="downtimes" element={<FaultDowntimeDashboard />} /> {/* YENİ: Duruşlar */}
+          <Route path="downtimes" element={<FaultDowntimeDashboard />} />
           <Route path="users" element={<Users />} />
           <Route path="settings" element={<Profile />} />
           <Route path="admin" element={<AdminPanel />} />
