@@ -11,16 +11,10 @@ import * as XLSX from "xlsx";
 import api from "../api";
 import moment from "moment";
 
-interface Line {
-  id: number;
-  code: string;
-  name: string;
-}
-interface User {
-  id: number;
-  email: string;
-  role: string;
-}
+interface Line { id: number; code: string; name: string; }
+interface User { id: number; email: string; role: string; }
+interface Stock { id: number; name: string; quantity: number; critical: number; }
+interface StockUsage { stockId: number; amount: number; name?: string; }
 interface GeneralFault {
   id: number;
   description: string;
@@ -30,11 +24,13 @@ interface GeneralFault {
   lines: { line: Line; downtimeMin: number }[];
   user: User;
   createdAt: string;
+  stockUsages?: { amount: number; stock: { name: string; id: number; }; }[];
 }
 
 const FaultBookEnterprise: React.FC = () => {
   const [faults, setFaults] = useState<GeneralFault[]>([]);
   const [lines, setLines] = useState<Line[]>([]);
+  const [stocks, setStocks] = useState<Stock[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
@@ -42,31 +38,30 @@ const FaultBookEnterprise: React.FC = () => {
   const [search, setSearch] = useState("");
   const [filterLine, setFilterLine] = useState<number[]>([]);
   const [filterImpact, setFilterImpact] = useState<null | boolean>(null);
-  const [stats, setStats] = useState({
-    total: 0,
-    affected: 0,
-    notAffected: 0,
-  });
+  const [stats, setStats] = useState({ total: 0, affected: 0, notAffected: 0 });
 
-  // Admin kontrolü
+  // Kullanıcı rolü
   const [isAdmin, setIsAdmin] = useState(false);
-
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("userInfo") || "{}");
     setIsAdmin(user?.role === "admin");
   }, []);
 
-  // Hatları çek
+  // Hatlar & Stoklar çek
   const fetchLines = async () => {
     try {
       const res = await api.get<Line[]>("/production-lines");
       setLines(res.data);
-    } catch {
-      message.error("Hatlar alınamadı.");
-    }
+    } catch { message.error("Hatlar alınamadı."); }
+  };
+  const fetchStocks = async () => {
+    try {
+      const res = await api.get<Stock[]>("/stocks");
+      setStocks(res.data);
+    } catch { message.error("Stoklar alınamadı."); }
   };
 
-  // Arızaları çek
+  // Arızalar
   const fetchFaults = async () => {
     setLoading(true);
     try {
@@ -81,14 +76,11 @@ const FaultBookEnterprise: React.FC = () => {
         );
       setFaults(data);
       calcStats(data);
-    } catch {
-      message.error("Arızalar alınamadı.");
-    } finally {
-      setLoading(false);
-    }
+    } catch { message.error("Arızalar alınamadı."); }
+    finally { setLoading(false); }
   };
 
-  // İstatistik hesapla
+  // İstatistik
   const calcStats = (data: GeneralFault[]) => {
     const total = data.length;
     const affected = data.filter((f) => f.productionImpact).length;
@@ -96,7 +88,7 @@ const FaultBookEnterprise: React.FC = () => {
     setStats({ total, affected, notAffected });
   };
 
-  // Excel export
+  // Excel
   const exportExcel = () => {
     const ws = XLSX.utils.json_to_sheet(
       faults.map((f) => ({
@@ -106,6 +98,9 @@ const FaultBookEnterprise: React.FC = () => {
         "Hat(lar)": f.lines.map((l) => `${l.line.code} (${l.downtimeMin}dk)`).join(", "),
         "Kullanıcı": f.user?.email,
         Tarih: moment(f.date).format("DD.MM.YYYY HH:mm"),
+        "Kullanılan Malzemeler": f.stockUsages
+          ? f.stockUsages.map(su => `${su.stock.name} (${su.amount} adet)`).join(", ")
+          : "-"
       }))
     );
     const wb = XLSX.utils.book_new();
@@ -113,19 +108,28 @@ const FaultBookEnterprise: React.FC = () => {
     XLSX.writeFile(wb, "ariza-defteri.xlsx");
   };
 
-  // Ekle Modalı/Lines/Süre için
+  // Modal/hat/stoklar
   const [impact, setImpact] = useState(true);
   const [selectedLines, setSelectedLines] = useState<number[]>([]);
+  const [usedStocks, setUsedStocks] = useState<StockUsage[]>([]);
   useEffect(() => {
     if (!modalOpen) {
-      setImpact(true);
-      setSelectedLines([]);
+      setImpact(true); setSelectedLines([]); setUsedStocks([]);
       form.resetFields();
     }
   }, [modalOpen]);
 
-  useEffect(() => { fetchLines(); }, []);
+  useEffect(() => { fetchLines(); fetchStocks(); }, []);
   useEffect(() => { fetchFaults(); }, [search, filterLine, filterImpact]);
+
+  // Stok ekle/kaldır
+  const addStockUsage = () => setUsedStocks([...usedStocks, { stockId: undefined as any, amount: 1 }]);
+  const updateStockUsage = (idx: number, field: "stockId" | "amount", value: any) => {
+    const updated = [...usedStocks];
+    updated[idx][field] = value;
+    setUsedStocks(updated);
+  };
+  const removeStockUsage = (idx: number) => setUsedStocks(usedStocks.filter((_, i) => i !== idx));
 
   // Yeni arıza ekle
   const handleAdd = async () => {
@@ -133,6 +137,16 @@ const FaultBookEnterprise: React.FC = () => {
       const user = JSON.parse(localStorage.getItem("userInfo") || "{}");
       const userId = user?.id || 1;
       const values = await form.validateFields();
+
+      // Kullanılan stoklar ekle
+      const stocksToSend = usedStocks
+        .filter((s) => !!s.stockId && s.amount > 0)
+        .map((s) => ({
+          stockId: s.stockId,
+          amount: Number(s.amount),
+          note: `Arıza ile kullanıldı`
+        }));
+
       await api.post("/general-faults", {
         description: values.description,
         location: values.location,
@@ -146,11 +160,11 @@ const FaultBookEnterprise: React.FC = () => {
                 downtimeMin: Number(values[`downtimeMin_${lineId}`]) || 0,
               }))
             : [],
+        usedStocks: stocksToSend
       });
-      message.success("Arıza eklendi!");
-      setModalOpen(false);
-      form.resetFields();
-      fetchFaults();
+      message.success("Arıza eklendi! Stoklar otomatik güncellendi.");
+      setModalOpen(false); form.resetFields(); setUsedStocks([]);
+      fetchFaults(); fetchStocks();
     } catch (e: any) {
       message.error("Ekleme başarısız: " + (e?.response?.data?.error || ""));
     }
@@ -162,9 +176,7 @@ const FaultBookEnterprise: React.FC = () => {
       await api.delete(`/general-faults/${id}`);
       message.success("Arıza silindi.");
       fetchFaults();
-    } catch {
-      message.error("Silme başarısız.");
-    }
+    } catch { message.error("Silme başarısız."); }
   };
 
   // Tablo sütunları
@@ -175,15 +187,9 @@ const FaultBookEnterprise: React.FC = () => {
       render: (desc: string, record: GeneralFault) => (
         <a style={{ fontWeight: 500, fontSize: 15 }} onClick={() => setDetail(record)}>{desc}</a>
       ),
-      ellipsis: true,
-      width: 240,
+      ellipsis: true, width: 240,
     },
-    { 
-      title: "Lokasyon",
-      dataIndex: "location",
-      width: 110,
-      render: (loc: string) => <span style={{ color: "#6d6d6d" }}>{loc}</span>
-    },
+    { title: "Lokasyon", dataIndex: "location", width: 110, render: (loc: string) => <span style={{ color: "#6d6d6d" }}>{loc}</span> },
     {
       title: "Üretim Etkisi",
       dataIndex: "productionImpact",
@@ -211,9 +217,7 @@ const FaultBookEnterprise: React.FC = () => {
     {
       title: "Kullanıcı",
       dataIndex: ["user", "email"],
-      render: (v: string) => (
-        <span style={{ color: "#343f58" }}>{v || "-"}</span>
-      ),
+      render: (v: string) => <span style={{ color: "#343f58" }}>{v || "-"}</span>,
       width: 170,
     },
     {
@@ -232,7 +236,7 @@ const FaultBookEnterprise: React.FC = () => {
     },
     {
       title: "",
-      width: 90,
+      width: 120,
       render: (_: any, record: GeneralFault) => (
         <Space>
           <Tooltip title="Detay">
@@ -263,62 +267,86 @@ const FaultBookEnterprise: React.FC = () => {
     },
   ];
 
-  return (
-    <div style={{ maxWidth: 900, margin: "40px auto" }}>
-      {/* Sadece 3 istatistik kutusu */}
-      <Row gutter={16} style={{ marginBottom: 18 }}>
-        <Col flex={1}>
-          <Card variant="borderless">
-            <Statistic title="Toplam Arıza" value={stats.total} />
-          </Card>
-        </Col>
-        <Col flex={1}>
-          <Card variant="borderless">
-            <Statistic title="Üretimi Etkileyen" value={stats.affected} valueStyle={{ color: "#cf1322" }} />
-          </Card>
-        </Col>
-        <Col flex={1}>
-          <Card variant="borderless">
-            <Statistic title="Üretimi Etkilemeyen" value={stats.notAffected} valueStyle={{ color: "#3f8600" }} />
-          </Card>
-        </Col>
-      </Row>
+  // Kullanılan stokları formda göstermek için UI
+  const renderStockUsages = () => (
+    <div style={{ marginTop: 10 }}>
+      <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>
+        Kullanılan Malzemeler:
+        <Button
+          icon={<PlusOutlined />}
+          size="small"
+          style={{ marginLeft: 10, fontWeight: 500 }}
+          onClick={addStockUsage}
+          type="dashed"
+        >
+          Ekle
+        </Button>
+      </div>
+      {usedStocks.length === 0 && <Tag color="default">Malzeme eklenmedi</Tag>}
+      {usedStocks.map((us, idx) => (
+        <Space key={idx} style={{ marginBottom: 6 }}>
+          <Select
+            placeholder="Malzeme seç"
+            style={{ width: 180 }}
+            value={us.stockId}
+            onChange={v => updateStockUsage(idx, "stockId", v)}
+            showSearch
+            optionFilterProp="children"
+          >
+            {stocks.map(st => (
+              <Select.Option key={st.id} value={st.id} disabled={st.quantity <= 0}>
+                {st.name} <span style={{ color: "#888" }}>({st.quantity} adet)</span>
+              </Select.Option>
+            ))}
+          </Select>
+          <Input
+            type="number"
+            min={1}
+            max={stocks.find(s => s.id === us.stockId)?.quantity || 99}
+            placeholder="Adet"
+            style={{ width: 80 }}
+            value={us.amount}
+            onChange={e => updateStockUsage(idx, "amount", e.target.value)}
+          />
+          <Button danger type="link" onClick={() => removeStockUsage(idx)}>Sil</Button>
+        </Space>
+      ))}
+    </div>
+  );
 
+  // Kullanılan stokları detayda göster
+  const renderStockUsageDetail = (fault: GeneralFault) =>
+    fault.stockUsages && fault.stockUsages.length > 0 && (
+      <div style={{ marginTop: 10 }}>
+        <b>Kullanılan Malzemeler:</b>
+        <ul style={{ paddingLeft: 20 }}>
+          {fault.stockUsages.map(su => (
+            <li key={su.stock.id}>
+              <Tag color="purple">{su.stock.name}</Tag>
+              <span style={{ fontWeight: 500 }}> x {su.amount} adet</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+
+  return (
+    <div style={{ maxWidth: 960, margin: "40px auto" }}>
+      {/* İstatistik kutuları */}
+      <Row gutter={16} style={{ marginBottom: 18 }}>
+        <Col flex={1}><Card variant="borderless"><Statistic title="Toplam Arıza" value={stats.total} /></Card></Col>
+        <Col flex={1}><Card variant="borderless"><Statistic title="Üretimi Etkileyen" value={stats.affected} valueStyle={{ color: "#cf1322" }} /></Card></Col>
+        <Col flex={1}><Card variant="borderless"><Statistic title="Üretimi Etkilemeyen" value={stats.notAffected} valueStyle={{ color: "#3f8600" }} /></Card></Col>
+      </Row>
       {/* Filtreler */}
       <Space style={{ marginBottom: 18, flexWrap: "wrap" }}>
-        <Input.Search
-          allowClear
-          style={{ width: 220 }}
-          placeholder="Açıklama ara..."
-          onSearch={setSearch}
-        />
-        <Select
-          mode="multiple"
-          style={{ width: 180 }}
-          allowClear
-          placeholder="Hat seç"
-          onChange={setFilterLine}
-          options={lines.map((l) => ({ value: l.id, label: l.code }))}
-        />
-        <Select
-          allowClear
-          style={{ width: 160 }}
-          placeholder="Üretim Etkisi"
-          onChange={setFilterImpact}
-          options={[
-            { value: true, label: "Etkiledi" },
-            { value: false, label: "Etkilemedi" },
-          ]}
-        />
+        <Input.Search allowClear style={{ width: 220 }} placeholder="Açıklama ara..." onSearch={setSearch} />
+        <Select mode="multiple" style={{ width: 180 }} allowClear placeholder="Hat seç" onChange={setFilterLine} options={lines.map((l) => ({ value: l.id, label: l.code }))} />
+        <Select allowClear style={{ width: 160 }} placeholder="Üretim Etkisi" onChange={setFilterImpact} options={[{ value: true, label: "Etkiledi" }, { value: false, label: "Etkilemedi" }]} />
         <Button icon={<ReloadOutlined />} onClick={fetchFaults}>Yenile</Button>
-        <Button icon={<PlusOutlined />} type="primary" onClick={() => setModalOpen(true)}>
-          Yeni Arıza
-        </Button>
-        <Button icon={<FileExcelOutlined />} onClick={exportExcel}>
-          Excel
-        </Button>
+        <Button icon={<PlusOutlined />} type="primary" onClick={() => setModalOpen(true)}>Yeni Arıza</Button>
+        <Button icon={<FileExcelOutlined />} onClick={exportExcel}>Excel</Button>
       </Space>
-
       {/* Tablo */}
       <Table
         dataSource={faults}
@@ -332,7 +360,6 @@ const FaultBookEnterprise: React.FC = () => {
         style={{ background: "#f8fafd", borderRadius: 18 }}
         rowClassName={(_, i) => (i % 2 === 0 ? "even-row" : "odd-row")}
       />
-
       {/* Ekle Modal */}
       <Modal
         open={modalOpen}
@@ -348,35 +375,20 @@ const FaultBookEnterprise: React.FC = () => {
           initialValues={{ productionImpact: true }}
           onFinish={handleAdd}
         >
-          <Form.Item
-            label="Açıklama"
-            name="description"
-            rules={[{ required: true, message: "Açıklama girin" }]}
-          >
+          <Form.Item label="Açıklama" name="description" rules={[{ required: true, message: "Açıklama girin" }]}>
             <Input.TextArea />
           </Form.Item>
           <Form.Item label="Lokasyon" name="location">
             <Input />
           </Form.Item>
-          <Form.Item
-            label="Tarih"
-            name="date"
-            rules={[{ required: true, message: "Tarih seçin" }]}
-          >
+          <Form.Item label="Tarih" name="date" rules={[{ required: true, message: "Tarih seçin" }]}>
             <DatePicker showTime style={{ width: "100%" }} format="DD.MM.YYYY HH:mm" />
           </Form.Item>
-          <Form.Item
-            label="Üretimi Etkiledi mi?"
-            name="productionImpact"
-            rules={[{ required: true, message: "Bu alan zorunlu" }]}
-          >
+          <Form.Item label="Üretimi Etkiledi mi?" name="productionImpact" rules={[{ required: true, message: "Bu alan zorunlu" }]}>
             <Select
               onChange={v => {
                 setImpact(v);
-                if (!v) {
-                  setSelectedLines([]);
-                  form.setFieldsValue({ lines: [] });
-                }
+                if (!v) { setSelectedLines([]); form.setFieldsValue({ lines: [] }); }
               }}
             >
               <Select.Option value={true}>Evet</Select.Option>
@@ -385,16 +397,8 @@ const FaultBookEnterprise: React.FC = () => {
           </Form.Item>
           {impact && (
             <>
-              <Form.Item
-                label="Etkilenen Hat(lar)"
-                name="lines"
-                rules={[{ required: true, message: "Hat seçin", type: "array" }]}
-              >
-                <Select
-                  mode="multiple"
-                  onChange={setSelectedLines}
-                  options={lines.map((l) => ({ value: l.id, label: l.code }))}
-                />
+              <Form.Item label="Etkilenen Hat(lar)" name="lines" rules={[{ required: true, message: "Hat seçin", type: "array" }]}>
+                <Select mode="multiple" onChange={setSelectedLines} options={lines.map((l) => ({ value: l.id, label: l.code }))} />
               </Form.Item>
               {selectedLines.map((lid) => (
                 <Form.Item
@@ -411,9 +415,10 @@ const FaultBookEnterprise: React.FC = () => {
               ))}
             </>
           )}
+          {/* --- MALZEME KULLANIMI ALANI --- */}
+          {renderStockUsages()}
         </Form>
       </Modal>
-
       {/* Detay Modalı */}
       <Modal
         title="Arıza Detayı"
@@ -438,9 +443,7 @@ const FaultBookEnterprise: React.FC = () => {
             <p>
               <b>Hat(lar):</b>{" "}
               {detail.lines.map((l) => (
-                <Tag key={l.line.id}>
-                  {l.line.code} ({l.downtimeMin}dk)
-                </Tag>
+                <Tag key={l.line.id}>{l.line.code} ({l.downtimeMin}dk)</Tag>
               ))}
             </p>
             <p>
@@ -449,6 +452,7 @@ const FaultBookEnterprise: React.FC = () => {
             <p>
               <b>Kayıt Tarihi:</b> {moment(detail.createdAt).format("DD.MM.YYYY HH:mm")}
             </p>
+            {renderStockUsageDetail(detail)}
           </div>
         )}
       </Modal>

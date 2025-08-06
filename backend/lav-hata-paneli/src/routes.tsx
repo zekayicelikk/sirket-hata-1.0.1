@@ -16,6 +16,10 @@ import AppLayout from "./components/AppLayout";
 import ControlDevices from "./pages/ControlDevices";
 import ControlDeviceDetail from "./pages/ControlDeviceDetail";
 
+// === STOCK SAYFALARI ===
+import Stocks from "./pages/Stocks";
+import StockDetail from "./pages/StockDetail";
+
 const ProtectedRoutes = () => (
   <AppLayout>
     <Outlet />
@@ -46,6 +50,12 @@ const AppRoutes = () => {
           <Route path="users" element={<Users />} />
           <Route path="settings" element={<Profile />} />
           <Route path="admin" element={<AdminPanel />} />
+
+          {/* ======= STOCK ROUTES ======= */}
+          <Route path="stocks" element={<Stocks />} />
+          <Route path="stock/:id" element={<StockDetail />} />
+          {/* ============================ */}
+
           <Route path="*" element={<Navigate to="/" />} />
         </Route>
       ) : (

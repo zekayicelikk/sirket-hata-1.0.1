@@ -7,7 +7,7 @@ import nodemailer from "nodemailer";
 const router = Router();
 const prisma = new PrismaClient();
 
-// Arıza kayıtlarını getir (değişiklik yok)
+// Arıza kayıtlarını getir (stockUsages dahil)
 router.get("/", authenticateToken, async (req: any, res) => {
   try {
     const { motorId } = req.query;
@@ -20,6 +20,12 @@ router.get("/", authenticateToken, async (req: any, res) => {
         user: { select: { id: true, email: true, role: true } },
         motor: true,
         faultType: true,
+        stockUsages: {
+          include: {
+            stock: true,
+            user: true,
+          },
+        },
       },
       orderBy: { date: "desc" }
     });
@@ -35,13 +41,22 @@ router.get("/", authenticateToken, async (req: any, res) => {
   }
 });
 
-// Kullanıcının kendi kayıtları (değişiklik yok)
+// Kullanıcının kendi kayıtları (stockUsages dahil)
 router.get("/my", authenticateToken, async (req: any, res) => {
   try {
     const userId = req.user.id;
     const records = await prisma.record.findMany({
       where: { userId: Number(userId) },
-      include: { motor: true, faultType: true },
+      include: {
+        motor: true,
+        faultType: true,
+        stockUsages: {
+          include: {
+            stock: true,
+            user: true,
+          },
+        },
+      },
       orderBy: { date: "desc" }
     });
     res.json(records);
@@ -50,13 +65,15 @@ router.get("/my", authenticateToken, async (req: any, res) => {
   }
 });
 
-// Yeni arıza kaydı ekle
+// Yeni arıza kaydı ekle (stockUsages ile)
 router.post("/", authenticateToken, async (req: any, res) => {
   const userId = req.user.id;
-  const { motorId, faultTypeId, desc, duration, date } = req.body;
+  const { motorId, faultTypeId, desc, duration, date, stockUsages } = req.body;
+
   if (!motorId || !faultTypeId || !desc) {
     return res.status(400).json({ error: "Tüm alanlar zorunlu" });
   }
+
   try {
     const record = await prisma.record.create({
       data: {
@@ -66,32 +83,50 @@ router.post("/", authenticateToken, async (req: any, res) => {
         desc,
         duration: duration ? Number(duration) : null,
         date: date ? new Date(date) : new Date(),
-      }
+        stockUsages: {
+          create: stockUsages?.map((s: any) => ({
+            stock: { connect: { id: s.stockId } },
+            amount: s.amount,
+            note: s.note,
+            user: { connect: { id: userId } },
+          })) || [],
+        }
+      },
+      include: {
+        motor: true,
+        faultType: true,
+        user: true,
+        stockUsages: {
+          include: {
+            stock: true,
+            user: true,
+          },
+        },
+      },
     });
 
-    // Aynı motor, aynı arıza tipinden 3 kez tekrarlandıysa mail at
+    // Kritik arıza tekrarı mail uyarısı (aynı kalabilir)
     const sameFaultCount = await prisma.record.count({
       where: {
         motorId: Number(motorId),
-        faultTypeId: Number(faultTypeId)
+        faultTypeId: Number(faultTypeId),
       }
     });
     if (sameFaultCount === 3) {
       const motor = await prisma.motor.findUnique({ where: { id: Number(motorId) } });
       const faultType = await prisma.faultType.findUnique({ where: { id: Number(faultTypeId) } });
 
-      // MAIL KISMI
       let transporter = nodemailer.createTransport({
         service: "gmail",
         auth: {
-          user: "zek4345@gmail.com",             // Senin gönderen mail adresin
-          pass: "vmej mfkv qmws uvcf"            // Gmail uygulama şifresi (boşlukları da aynen bırak!)
+          user: "zek4345@gmail.com",
+          pass: "vmejmfkvqmwsivcf"
         }
       });
 
       let mailOptions = {
         from: "zek4345@gmail.com",
-        to: "serkancicekogluiu@gmail.com",             // Müdürün/mail atılacak adres
+        to: "serkancicekogluiu@gmail.com",
         subject: "Kritik Uyarı: Motor Arızası 3 Kez Tekrarladı!",
         html: `
           <h2><b>${motor?.name || "Motor " + motorId}</b> için aynı arıza tipi 3. kez kaydedildi!</h2>
@@ -121,10 +156,11 @@ router.post("/", authenticateToken, async (req: any, res) => {
   }
 });
 
-// Arıza kaydını güncelle (değişiklik yok)
+// Arıza kaydını güncelle (stockUsages hariç, ihtiyaç varsa ayrıca yazılır)
 router.put("/:id", authenticateToken, requireAdmin, async (req: any, res) => {
   const { id } = req.params;
   const { motorId, faultTypeId, desc, duration, date } = req.body;
+
   try {
     const updated = await prisma.record.update({
       where: { id: Number(id) },
@@ -133,7 +169,7 @@ router.put("/:id", authenticateToken, requireAdmin, async (req: any, res) => {
         faultTypeId: Number(faultTypeId),
         desc,
         duration: duration ? Number(duration) : null,
-        date: date ? new Date(date) : undefined
+        date: date ? new Date(date) : undefined,
       }
     });
     res.json(updated);
@@ -142,7 +178,7 @@ router.put("/:id", authenticateToken, requireAdmin, async (req: any, res) => {
   }
 });
 
-// Arıza kaydını sil (değişiklik yok)
+// Arıza kaydını sil (stockUsage cascade silinir)
 router.delete("/:id", authenticateToken, requireAdmin, async (req: any, res) => {
   const { id } = req.params;
   try {

@@ -13,7 +13,9 @@ import Profile from "./pages/Profile";
 import AdminPanel from "./pages/AdminPanel";
 import AppLayout from "./components/AppLayout";
 import ControlDevices from "./pages/ControlDevices";
-import ControlDeviceDetail from "./pages/ControlDeviceDetail"; // <-- EKLENDİ!
+import ControlDeviceDetail from "./pages/ControlDeviceDetail";
+import Stocks from "./pages/Stocks";                 // <-- EKLENDİ
+import StockDetail from "./pages/StockDetail";       // <-- EKLENDİ
 import "./App.css";
 
 const ProtectedRoutes = () => (
@@ -48,6 +50,12 @@ const App: React.FC = () => {
             <Route path="users" element={<Users />} />
             <Route path="settings" element={<Profile />} />
             <Route path="admin" element={<AdminPanel />} />
+
+            {/* ======= STOCK ROUTES ======= */}
+            <Route path="stocks" element={<Stocks />} />
+            <Route path="stock/:id" element={<StockDetail />} />
+            {/* ============================ */}
+
             <Route path="*" element={<Navigate to="/" />} />
           </Route>
         ) : (

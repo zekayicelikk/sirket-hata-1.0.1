@@ -22,6 +22,7 @@ model User {
   actionLogs    ActionLog[]
   announcements Announcement[]  @relation("UserAnnouncements")
   createdAt     DateTime        @default(now())
+  stockUsages   StockUsage[]
 }
 
 // === MOTOR TABLOSU ===
@@ -51,7 +52,7 @@ model Motor {
   imageUrl       String?
   notes          String?
   createdAt      DateTime  @default(now())
-  records        Record[] // SADECE BU!
+  records        Record[]
   controlDevices ControlDevice[]
 }
 
@@ -68,7 +69,7 @@ model Record {
   id          Int       @id @default(autoincrement())
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId      Int
-  motor       Motor     @relation(fields: [motorId], references: [id], onDelete: Cascade) // <-- onDelete burada!
+  motor       Motor     @relation(fields: [motorId], references: [id], onDelete: Cascade)
   motorId     Int
   faultType   FaultType @relation(fields: [faultTypeId], references: [id])
   faultTypeId Int
@@ -81,6 +82,7 @@ model Record {
   status      String?
   closedAt    DateTime?
   createdAt   DateTime  @default(now())
+  stockUsages StockUsage[]
 }
 
 // === HAT (LINE) TABLOSU ===
@@ -106,6 +108,7 @@ model GeneralFault {
   createdAt        DateTime             @default(now())
   status           String               @default("open")
   closedAt         DateTime?
+  stockUsages      StockUsage[]
 }
 
 // === ARIZA-HAT PIVOTU ===
@@ -149,20 +152,21 @@ model Announcement {
   createdBy   User?    @relation("UserAnnouncements", fields: [createdById], references: [id])
   createdById Int?
 }
+
 // === MOTOR KONTROL CİHAZI (SÜRÜCÜ, SOFT STARTER, VFD) ===
 model ControlDevice {
   id              Int      @id @default(autoincrement())
-  type            String   // "VFD", "Soft Starter" vs.
+  type            String
   serial          String   @unique
   brand           String
   model           String
   powerKW         Float
   voltage         Float
-  status          String   // "Aktif" | "Yedek" | "Bakımda" | "Arızalı" | "Durduruldu"
+  status          String
   isSpare         Boolean  @default(false)
   activeMotorId   Int?     
   motor           Motor?   @relation(fields: [activeMotorId], references: [id])
-  spareForMotors  String?  // (JSON array string, opsiyonel)
+  spareForMotors  String?
   location        String
   protection      String?
   commProtocol    String?
@@ -178,4 +182,33 @@ model ControlDevice {
   imageUrl        String?
   qrCode          String?
   createdAt       DateTime @default(now())
+}
+
+// === STOK ===
+model Stock {
+  id          Int          @id @default(autoincrement())
+  name        String
+  description String?
+  quantity    Int
+  unit        String?
+  critical    Int
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  usages      StockUsage[]
+}
+
+// === STOK KULLANIMI ===
+model StockUsage {
+  id            Int           @id @default(autoincrement())
+  stock         Stock         @relation(fields: [stockId], references: [id], onDelete: Cascade)
+  stockId       Int
+  amount        Int
+  usedAt        DateTime      @default(now())
+  generalFault  GeneralFault? @relation(fields: [generalFaultId], references: [id], onDelete: Cascade)
+  generalFaultId Int?
+  record        Record?       @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  recordId      Int?
+  user          User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId        Int?
+  note          String?
 }

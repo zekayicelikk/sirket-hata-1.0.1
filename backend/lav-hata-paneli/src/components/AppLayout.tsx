@@ -117,21 +117,22 @@ const AppLayout: React.FC<{ children?: ReactNode }> = ({ children }) => {
     ]);
   }, []);
 
-  const menuItems = useMemo(
-    () => [
-      { key: "/", icon: <HomeOutlined />, label: "Ana Sayfa" },
-      { key: "/equipment", icon: <AppstoreOutlined />, label: "Ekipmanlar" },
-      { key: "/general-faults", icon: <FileTextOutlined />, label: "Arıza Defteri" },
-      { key: "/downtimes", icon: <FieldTimeOutlined />, label: "Duruşlar" },
-      { key: "/users", icon: <TeamOutlined />, label: "Kullanıcılar" },
-      { key: "/settings", icon: <SettingOutlined />, label: "Profil" },
-      ...(userInfo && userInfo.role === "admin"
-        ? [{ key: "/admin", icon: <SettingOutlined />, label: "Admin Panel" }]
-        : []),
-      { key: "/logout", icon: <LogoutOutlined />, label: "Çıkış" },
-    ],
-    [userInfo]
-  );
+ const menuItems = useMemo(
+  () => [
+    { key: "/", icon: <HomeOutlined />, label: "Ana Sayfa" },
+    { key: "/equipment", icon: <AppstoreOutlined />, label: "Ekipmanlar" },
+    { key: "/general-faults", icon: <FileTextOutlined />, label: "Arıza Defteri" },
+    { key: "/downtimes", icon: <FieldTimeOutlined />, label: "Duruşlar" },
+    { key: "/users", icon: <TeamOutlined />, label: "Kullanıcılar" },
+    { key: "/stocks", icon: <SkinOutlined />, label: "Stoklar" },   // <-- BURAYA EKLENDİ
+    { key: "/settings", icon: <SettingOutlined />, label: "Profil" },
+    ...(userInfo && userInfo.role === "admin"
+      ? [{ key: "/admin", icon: <SettingOutlined />, label: "Admin Panel" }]
+      : []),
+    { key: "/logout", icon: <LogoutOutlined />, label: "Çıkış" },
+  ],
+  [userInfo]
+);
 
   const handleMenu = useCallback(
     ({ key }: { key: string }) => {
@@ -577,27 +578,7 @@ const AppLayout: React.FC<{ children?: ReactNode }> = ({ children }) => {
               boxShadow: "0 8px 32px #b486be1a, 0 1.5px 9px #e9b7e420",
             }}
           >
-            {/* DUYURULAR sadece dashboard'da */}
-            {location.pathname === "/" && <Announcements />}
-            {/* === Başlık ve ana içerik === */}
-            <h1
-              style={{
-                fontWeight: 700,
-                fontSize: 32,
-                marginBottom: 0,
-                color: "#2b154b",
-                letterSpacing: 1,
-              }}
-            >
-              {pageTitle}
-            </h1>
-            <hr
-              style={{
-                border: "none",
-                borderTop: "1.5px solid #ece3ee",
-                margin: "16px 0 24px 0",
-              }}
-            />
+            
             {/* Ana içerik */}
             <div style={{ width: "100%" }}>
               {loadingUser ? (
